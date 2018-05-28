@@ -11,11 +11,12 @@ type Settings struct {
 }
 
 type Application struct {
-	ID         string   `json:"id"`
-	Name       string   `json:"name"`
-	Label      string   `json:"label"`
-	SignOnMode string   `json:"signOnMode"`
-	Settings   Settings `json:"settings"`
+	ID          string      `json:"id"`
+	Name        string      `json:"name"`
+	Label       string      `json:"label"`
+	SignOnMode  string      `json:"signOnMode"`
+	Settings    Settings    `json:"settings"`
+	Credentials Credentials `json:"credentials"`
 }
 
 type AppSettings struct {
@@ -26,6 +27,14 @@ type AppSettings struct {
 	SessionDuration     int    `json:"sessionDuration"`
 	RoleValuePattern    string `json:"roleValuePattern"`
 	IdentityProviderArn string `json:"identityProviderArn"`
+}
+
+type Credentials struct {
+	Signing Signing `json:"signing"`
+}
+
+type Signing struct {
+	KeyID string `json:"kid"`
 }
 
 func resourceApp() *schema.Resource {
