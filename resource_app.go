@@ -19,12 +19,13 @@ type Application struct {
 }
 
 type AppSettings struct {
-	AwsEnvironmentType string `json:"awsEnvironmentType"`
-	GroupFilter        string `json:"groupFilter"`
-	LoginURL           string `json:"loginUrl"`
-	JoinAllRoles       bool   `json:"joinAllRoles"`
-	SessionDuration    int    `json:"sessionDuration"`
-	RoleValuePattern   string `json:"roleValuePattern"`
+	AwsEnvironmentType  string `json:"awsEnvironmentType"`
+	GroupFilter         string `json:"groupFilter"`
+	LoginURL            string `json:"loginUrl"`
+	JoinAllRoles        bool   `json:"joinAllRoles"`
+	SessionDuration     int    `json:"sessionDuration"`
+	RoleValuePattern    string `json:"roleValuePattern"`
+	IdentityProviderArn string `json:"identityProviderArn"`
 }
 
 func resourceApp() *schema.Resource {
@@ -92,12 +93,13 @@ func resourceAppCreate(d *schema.ResourceData, m interface{}) error {
 		SignOnMode: d.Get("sign_on_mode").(string),
 		Settings: Settings{
 			App: AppSettings{
-				AwsEnvironmentType: d.Get("aws_environment_type").(string),
-				GroupFilter:        d.Get("group_filter").(string),
-				LoginURL:           d.Get("login_url").(string),
-				JoinAllRoles:       d.Get("join_all_roles").(bool),
-				SessionDuration:    d.Get("session_duration").(int),
-				RoleValuePattern:   d.Get("role_value_pattern").(string),
+				AwsEnvironmentType:  d.Get("aws_environment_type").(string),
+				GroupFilter:         d.Get("group_filter").(string),
+				LoginURL:            d.Get("login_url").(string),
+				JoinAllRoles:        d.Get("join_all_roles").(bool),
+				SessionDuration:     d.Get("session_duration").(int),
+				RoleValuePattern:    d.Get("role_value_pattern").(string),
+				IdentityProviderArn: d.Get("identity_provider_arn").(string),
 			},
 		},
 	}
