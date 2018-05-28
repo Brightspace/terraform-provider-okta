@@ -48,6 +48,7 @@ func (o *OktaClient) CreateApplication(application Application) (Application, er
 
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
 	res, err := client.Do(req)
@@ -72,6 +73,66 @@ func (o *OktaClient) CreateApplication(application Application) (Application, er
 	}
 
 	return app, nil
+}
+
+func (o *OktaClient) UpdateApplication(application Application) (Application, error) {
+	var app Application
+	url := fmt.Sprintf("%s/api/v1/apps/%s", o.OktaURL, app.ID)
+
+	body, err := json.Marshal(application)
+	if err != nil {
+		return app, err
+	}
+
+	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
+
+	res, err := client.Do(req)
+
+	if err != nil {
+		return app, err
+	}
+
+	defer res.Body.Close()
+
+	if res.StatusCode != 200 {
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(res.Body)
+		msg := buf.String()
+
+		return app, fmt.Errorf("Error updating application in Okta: %s", msg)
+	}
+
+	err = json.NewDecoder(res.Body).Decode(&app)
+	if err != nil {
+		return app, err
+	}
+
+	return app, nil
+}
+
+func (o *OktaClient) ReadApplication(appID string) (Application, error) {
+	var app Application
+	url := fmt.Sprintf("%s/api/v1/apps/%s", o.OktaURL, appID)
+
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
+
+	res, err := client.Do(req)
+	if err != nil {
+		return app, err
+	}
+
+	err = json.NewDecoder(res.Body).Decode(&app)
+	if err != nil {
+		return app, err
+	}
+
+	return app, err
 }
 
 func (o *OktaClient) DeleteApplication(appID string) error {
