@@ -135,6 +135,26 @@ func (o *OktaClient) ReadApplication(appID string) (Application, error) {
 	return app, err
 }
 
+func (o *OktaClient) GetSAMLMetaData(appID string, keyID string) (string, error) {
+	url := fmt.Sprintf("%s/api/v1/apps/%s/sso/saml/metadata?kid=%s", o.OktaURL, appID, keyID)
+
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/xml")
+	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
+
+	res, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(res.Body)
+	samlMetaData := buf.String()
+
+	return samlMetaData, nil
+}
+
 func (o *OktaClient) DeleteApplication(appID string) error {
 	// Deactivate app first
 	url := fmt.Sprintf("%s/api/v1/apps/%s/lifecycle/deactivate", o.OktaURL, appID)
