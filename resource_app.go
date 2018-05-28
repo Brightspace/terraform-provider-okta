@@ -89,6 +89,10 @@ func resourceApp() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+			"saml_metadata_document": &schema.Schema{
+				Type:     schema.TypeString,
+				Required: true,
+			},
 		},
 	}
 }
@@ -118,8 +122,14 @@ func resourceAppCreate(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 
+	samlMetadataDocument, err := client.GetSAMLMetaData(createdApplication.ID, createdApplication.Credentials.Signing.KeyID)
+	if err != nil {
+		return err
+	}
+
 	fmt.Printf("%+v\n", createdApplication)
 	d.SetId(createdApplication.ID)
+	d.Set("saml_metadata_document", samlMetadataDocument)
 
 	return nil
 }
