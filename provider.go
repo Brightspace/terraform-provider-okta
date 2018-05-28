@@ -22,9 +22,7 @@ func Provider() terraform.ResourceProvider {
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"okta_app":           resourceApp(),
-			"okta_saml_document": resourceSamlDocument(),
-		},
+			"okta_app": resourceApp()},
 		ConfigureFunc: configureProvider,
 	}
 }
