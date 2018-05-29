@@ -37,13 +37,14 @@ func initHTTPClient() http.Client {
 	}
 }
 
-func (o *OktaClient) CreateApplication(application Application) (Application, error) {
-	var app Application
+func (o *OktaClient) CreateApplication(application Application) (IdentifiedApplication, error) {
+	var idApp IdentifiedApplication
+
 	url := fmt.Sprintf("%s/api/v1/apps", o.OktaURL)
 
 	body, err := json.Marshal(application)
 	if err != nil {
-		return app, err
+		return idApp, err
 	}
 
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(body))
@@ -54,7 +55,7 @@ func (o *OktaClient) CreateApplication(application Application) (Application, er
 	res, err := client.Do(req)
 
 	if err != nil {
-		return app, err
+		return idApp, err
 	}
 
 	defer res.Body.Close()
@@ -64,15 +65,15 @@ func (o *OktaClient) CreateApplication(application Application) (Application, er
 		buf.ReadFrom(res.Body)
 		msg := buf.String()
 
-		return app, fmt.Errorf("Error creating application in Okta: %s", msg)
+		return idApp, fmt.Errorf("Error creating application in Okta: %s", msg)
 	}
 
-	err = json.NewDecoder(res.Body).Decode(&app)
+	err = json.NewDecoder(res.Body).Decode(&idApp)
 	if err != nil {
-		return app, err
+		return idApp, err
 	}
 
-	return app, nil
+	return idApp, nil
 }
 
 func (o *OktaClient) UpdateApplication(application Application) (Application, error) {
