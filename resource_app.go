@@ -91,7 +91,7 @@ func resourceApp() *schema.Resource {
 			},
 			"saml_metadata_document": &schema.Schema{
 				Type:     schema.TypeString,
-				Required: true,
+				Computed: true,
 			},
 		},
 	}
