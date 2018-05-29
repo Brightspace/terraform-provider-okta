@@ -21,3 +21,7 @@ resource "okta_app" "my-app" {
   session_duration     = 43200
   role_value_pattern   = "arn:aws:iam::${var.aws_account_id}:saml-provider/OKTA,arn:aws:iam::${var.aws_account_id}:role/${var.aws_role}"
 }
+
+output "saml_metadata_document" {
+	value = "${okta_app.my-app.saml_metadata_document}"
+}
