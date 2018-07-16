@@ -4,18 +4,40 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"net/http/cookiejar"
+	"net/url"
+	"regexp"
+	"strings"
 	"time"
+
+	"golang.org/x/net/html"
 )
 
 type Config struct {
-	OktaURL string
-	APIKey  string
+	OktaURL      string
+	OktaAdminUrl string
+	APIKey       string
+	UserName     string
+	Password     string
+	OrgID        string
 }
 
 type OktaClient struct {
-	OktaURL string
-	APIKey  string
+	OktaURL      string
+	OktaAdminUrl string
+	APIKey       string
+	UserName     string
+	Password     string
+	OrgID        string
+}
+
+type OktaAuthResponse struct {
+	ExpiresAt    time.Time `json:"expiresAt"`
+	SessionToken string    `json:"sessionToken"`
+	StateToken   string    `json:"stateToken"`
+	Status       string    `json:"status"`
 }
 
 func NewClient(c *Config) OktaClient {
@@ -192,4 +214,158 @@ func (o *OktaClient) DeleteApplication(appID string) error {
 	}
 
 	return nil
+}
+
+func (o *OktaClient) SetProvisioningSettings(appID string, oktaAWSKey string, oktaAWSSecretKey string) error {
+	authBody := fmt.Sprintf(`{"username":"%s", "password":"%s"}`, o.UserName, o.Password)
+
+	cookieJar, _ := cookiejar.New(nil)
+	client.Jar = cookieJar
+
+	authUrl := fmt.Sprintf(`%s/api/v1/authn`, o.OktaURL)
+	req, _ := http.NewRequest("POST", authUrl, strings.NewReader(authBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer res.Body.Close()
+
+	oktaAuthResponse := &OktaAuthResponse{}
+	body, err := ioutil.ReadAll(res.Body)
+	json.Unmarshal(body, &oktaAuthResponse)
+
+	cookieUrl := fmt.Sprintf("%s/login/sessionCookieRedirect?checkAccountSetupComplete=true&token=%s&redirectUrl=%s/user/notifications", o.OktaURL, oktaAuthResponse.SessionToken, o.OktaURL)
+
+	req2, _ := http.NewRequest("GET", cookieUrl, nil)
+	req2.Header.Set("Content-Type", "application/json")
+	req2.Header.Set("Accept", "application/json")
+
+	_, err2 := client.Do(req2)
+	if err2 != nil {
+		return err2
+	}
+
+	// ---------------
+	userHomeUrl := fmt.Sprintf("%s/app/UserHome", o.OktaURL)
+	req3, _ := http.NewRequest("GET", userHomeUrl, nil)
+	req3.Header.Set("Content-Type", "application/json")
+	req3.Header.Set("Accept", "application/json")
+
+	_, err3 := client.Do(req3)
+	if err3 != nil {
+		return err3
+	}
+
+	// ---------------
+	oneUrl := fmt.Sprintf("%s/home/saasure/%s/1", o.OktaURL, o.OrgID)
+	req5, _ := http.NewRequest("GET", oneUrl, nil)
+	req5.Header.Set("Content-Type", "application/json")
+	req5.Header.Set("Accept", "application/json")
+
+	oneResp, err5 := client.Do(req5)
+	if err5 != nil {
+		return err5
+	}
+
+	ssoToken := getSsoToken(*oneResp)
+	defer oneResp.Body.Close()
+
+	// ---------------
+	adminSsoUrl := fmt.Sprintf("%s/admin/sso/request", o.OktaAdminUrl)
+	postData := url.Values{}
+	postData.Add("token", ssoToken)
+	req6, _ := http.NewRequest("POST", adminSsoUrl, strings.NewReader(postData.Encode()))
+	req6.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req6.Header.Set("Accept", "application/json")
+
+	ssoResp, err6 := client.Do(req6)
+	if err6 != nil {
+		return err6
+	}
+
+	xsrfToken := getXsrfToken(*ssoResp)
+	defer ssoResp.Body.Close()
+
+	// ---------------
+	appUpdateUrl := fmt.Sprintf("%s/admin/app/amazon_aws/instance/%s/settings/user-mgmt", o.OktaAdminUrl, appID)
+	updateAppData := url.Values{}
+	updateAppData.Add("_xsrfToken", xsrfToken)
+	updateAppData.Add("enabled", "true")
+	updateAppData.Add("_enabled", "on")
+	updateAppData.Add("accessKeyUM", oktaAWSKey)
+	updateAppData.Add("secretKeyUM", oktaAWSSecretKey)
+	updateAppData.Add("accountIds", "")
+	updateAppData.Add("_pushNewAccount", "on")
+	updateAppData.Add("_pushProfile", "on")
+	updateAppData.Add("overrideApiURL", "")
+	updateAppData.Add("pushNewAccount", "true")
+
+	req7, _ := http.NewRequest("POST", appUpdateUrl, strings.NewReader(updateAppData.Encode()))
+	req7.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req7.Header.Set("Accept", "application/json")
+
+	_, err7 := client.Do(req7)
+	if err7 != nil {
+		return err7
+	}
+
+	return nil
+}
+
+func getXsrfToken(res http.Response) string {
+	z := html.NewTokenizer(res.Body)
+
+	for {
+		tt := z.Next()
+
+		switch {
+		case tt == html.ErrorToken:
+			return ""
+		case tt == html.StartTagToken:
+			t := z.Token()
+
+			if t.Data == "span" {
+				for _, a := range t.Attr {
+					if a.Key == "id" && a.Val == "_xsrfToken" {
+						z.Next()
+						return z.Token().Data
+					}
+				}
+			}
+		}
+	}
+}
+
+func getSsoToken(res http.Response) string {
+	z := html.NewTokenizer(res.Body)
+
+	for {
+		tt := z.Next()
+
+		switch {
+		case tt == html.ErrorToken:
+			return ""
+		case tt == html.StartTagToken:
+			t := z.Token()
+
+			if t.Data == "script" {
+				for _, a := range t.Attr {
+					if a.Key == "type" && a.Val == "text/javascript" {
+						z.Next()
+						javascriptText := z.Token().Data
+						r := regexp.MustCompile(`(?m)var\s*repostParams\s*=\s*{\s*"token"\s*:\s*\[\s*"(.+?)"`)
+						tokenMatch := r.FindAllStringSubmatch(javascriptText, -1)
+
+						if tokenMatch != nil {
+							return tokenMatch[0][1]
+						}
+					}
+				}
+			}
+		}
+	}
 }
