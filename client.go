@@ -44,8 +44,12 @@ func NewClient(c *Config) OktaClient {
 	client = initHTTPClient()
 
 	return OktaClient{
-		OktaURL: c.OktaURL,
-		APIKey:  c.APIKey,
+		OktaURL:      c.OktaURL,
+		OktaAdminUrl: c.OktaAdminUrl,
+		APIKey:       c.APIKey,
+		UserName:     c.UserName,
+		Password:     c.Password,
+		OrgID:        c.OrgID,
 	}
 }
 
