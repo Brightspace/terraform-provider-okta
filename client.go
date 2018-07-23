@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
@@ -266,32 +267,32 @@ func (o *OktaClient) SetProvisioningSettings(appID string, oktaAWSKey string, ok
 
 	// ---------------
 	oneUrl := fmt.Sprintf("%s/home/saasure/%s/1", o.OktaURL, o.OrgID)
-	req5, _ := http.NewRequest("GET", oneUrl, nil)
-	req5.Header.Set("Content-Type", "application/json")
-	req5.Header.Set("Accept", "application/json")
+	req4, _ := http.NewRequest("GET", oneUrl, nil)
+	req4.Header.Set("Content-Type", "application/json")
+	req4.Header.Set("Accept", "application/json")
 
-	oneResp, err5 := client.Do(req5)
-	if err5 != nil {
-		return err5
+	oneResp, err4 := client.Do(req4)
+	if err4 != nil {
+		return err4
 	}
 
-	ssoToken := getSsoToken(*oneResp)
+	ssoToken := getSsoToken(oneResp.Body)
 	defer oneResp.Body.Close()
 
 	// ---------------
 	adminSsoUrl := fmt.Sprintf("%s/admin/sso/request", o.OktaAdminUrl)
 	postData := url.Values{}
 	postData.Add("token", ssoToken)
-	req6, _ := http.NewRequest("POST", adminSsoUrl, strings.NewReader(postData.Encode()))
-	req6.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req6.Header.Set("Accept", "application/json")
+	req5, _ := http.NewRequest("POST", adminSsoUrl, strings.NewReader(postData.Encode()))
+	req5.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req5.Header.Set("Accept", "application/json")
 
-	ssoResp, err6 := client.Do(req6)
-	if err6 != nil {
-		return err6
+	ssoResp, err5 := client.Do(req5)
+	if err5 != nil {
+		return err5
 	}
 
-	xsrfToken := getXsrfToken(*ssoResp)
+	xsrfToken := getXsrfToken(ssoResp.Body)
 	defer ssoResp.Body.Close()
 
 	// ---------------
@@ -308,20 +309,20 @@ func (o *OktaClient) SetProvisioningSettings(appID string, oktaAWSKey string, ok
 	updateAppData.Add("overrideApiURL", "")
 	updateAppData.Add("pushNewAccount", "true")
 
-	req7, _ := http.NewRequest("POST", appUpdateUrl, strings.NewReader(updateAppData.Encode()))
-	req7.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req7.Header.Set("Accept", "application/json")
+	req6, _ := http.NewRequest("POST", appUpdateUrl, strings.NewReader(updateAppData.Encode()))
+	req6.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req6.Header.Set("Accept", "application/json")
 
-	_, err7 := client.Do(req7)
-	if err7 != nil {
-		return err7
+	_, err6 := client.Do(req6)
+	if err6 != nil {
+		return err6
 	}
 
 	return nil
 }
 
-func getXsrfToken(res http.Response) string {
-	z := html.NewTokenizer(res.Body)
+func getXsrfToken(resBody io.Reader) string {
+	z := html.NewTokenizer(resBody)
 
 	for {
 		tt := z.Next()
@@ -344,8 +345,8 @@ func getXsrfToken(res http.Response) string {
 	}
 }
 
-func getSsoToken(res http.Response) string {
-	z := html.NewTokenizer(res.Body)
+func getSsoToken(resBody io.Reader) string {
+	z := html.NewTokenizer(resBody)
 
 	for {
 		tt := z.Next()
