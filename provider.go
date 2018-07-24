@@ -25,18 +25,21 @@ func Provider() terraform.ResourceProvider {
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("OKTA_API_KEY", nil),
 				Description: "Okta API Key",
+				Sensitive:   true,
 			},
 			"username": &schema.Schema{
 				Type:        schema.TypeString,
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("OKTA_USERNAME", nil),
 				Description: "Okta admin username",
+				Sensitive:   true,
 			},
 			"password": &schema.Schema{
 				Type:        schema.TypeString,
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("OKTA_PASSWORD", nil),
 				Description: "Okta admin password",
+				Sensitive:   true,
 			},
 			"org_id": &schema.Schema{
 				Type:        schema.TypeString,
