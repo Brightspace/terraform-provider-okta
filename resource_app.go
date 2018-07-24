@@ -98,12 +98,14 @@ func resourceApp() *schema.Resource {
 				Computed: true,
 			},
 			"aws_okta_iam_user_id": &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
+				Type:      schema.TypeString,
+				Required:  true,
+				Sensitive: true,
 			},
 			"aws_okta_iam_user_secret": &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
+				Type:      schema.TypeString,
+				Required:  true,
+				Sensitive: true,
 			},
 		},
 	}
