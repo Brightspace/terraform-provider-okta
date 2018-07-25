@@ -97,6 +97,16 @@ func resourceApp() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+			"aws_okta_iam_user_id": &schema.Schema{
+				Type:      schema.TypeString,
+				Required:  true,
+				Sensitive: true,
+			},
+			"aws_okta_iam_user_secret": &schema.Schema{
+				Type:      schema.TypeString,
+				Required:  true,
+				Sensitive: true,
+			},
 		},
 	}
 }
@@ -128,6 +138,11 @@ func resourceAppCreate(d *schema.ResourceData, m interface{}) error {
 	samlMetadataDocument, err := client.GetSAMLMetaData(createdApplication.ID, createdApplication.Credentials.Signing.KeyID)
 	if err != nil {
 		return err
+	}
+
+	provisionErr := client.SetProvisioningSettings(createdApplication.ID, d.Get("aws_okta_iam_user_id").(string), d.Get("aws_okta_iam_user_secret").(string))
+	if provisionErr != nil {
+		return provisionErr
 	}
 
 	fmt.Printf("%+v\n", createdApplication)
