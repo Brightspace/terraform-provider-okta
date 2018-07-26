@@ -37,3 +37,12 @@ resource "okta_app" "my-app" {
 output "saml_metadata_document" {
   value = "${okta_app.my-app.saml_metadata_document}"
 }
+
+output "okta_app_id" {
+  value = "${okta_app.my-app.id}"
+}
+
+resource "okta_app_idp_attachment" "my-idp" {
+  app_id                = "${okta_app.my-app.id}"
+  identity_provider_arn = "arn:aws:iam::852561389367:saml-provider/Okta"
+}
