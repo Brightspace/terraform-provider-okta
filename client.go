@@ -105,7 +105,7 @@ func (o *OktaClient) CreateApplication(application Application) (IdentifiedAppli
 
 func (o *OktaClient) UpdateApplication(application Application) (Application, error) {
 	var app Application
-	url := fmt.Sprintf("%s/api/v1/apps/%s", o.OktaURL, app.ID)
+	url := fmt.Sprintf("%s/api/v1/apps/%s", o.OktaURL, application.ID)
 
 	body, err := json.Marshal(application)
 	if err != nil {
