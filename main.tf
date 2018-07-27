@@ -22,16 +22,14 @@ provider "okta" {
 }
 
 resource "okta_app" "my-app" {
-  name                     = "amazon_aws"
-  label                    = "D2L-Terraform-Test"
-  sign_on_mode             = "SAML_2_0"
-  aws_environment_type     = "aws.amazon"
-  group_filter             = "aws_(?${var.aws_account_id}\\d+)_(?${var.aws_role}[a-zA-Z0-9+=,.@\\-_]+)"
-  login_url                = "https://console.aws.amazon.com/ec2/home"
-  session_duration         = 43200
-  role_value_pattern       = "arn:aws:iam::${var.aws_account_id}:saml-provider/OKTA,arn:aws:iam::${var.aws_account_id}:role/${var.aws_role}"
-  aws_okta_iam_user_id     = "${var.okta_aws_user_id}"
-  aws_okta_iam_user_secret = "${var.okta_aws_user_secret}"
+  name                 = "amazon_aws"
+  label                = "D2L-Terraform-Test"
+  sign_on_mode         = "SAML_2_0"
+  aws_environment_type = "aws.amazon"
+  group_filter         = "aws_(?${var.aws_account_id}\\d+)_(?${var.aws_role}[a-zA-Z0-9+=,.@\\-_]+)"
+  login_url            = "https://console.aws.amazon.com/ec2/home"
+  session_duration     = 43200
+  role_value_pattern   = "arn:aws:iam::${var.aws_account_id}:saml-provider/OKTA,arn:aws:iam::${var.aws_account_id}:role/${var.aws_role}"
 }
 
 output "saml_metadata_document" {
@@ -40,6 +38,12 @@ output "saml_metadata_document" {
 
 output "okta_app_id" {
   value = "${okta_app.my-app.id}"
+}
+
+resource "okta_app_provisioner_settings" "my-provisioner" {
+  app_id                   = "${okta_app.my-app.id}"
+  aws_okta_iam_user_id     = "${var.okta_aws_user_id}"
+  aws_okta_iam_user_secret = "${var.okta_aws_user_secret}"
 }
 
 resource "okta_app_idp_attachment" "my-idp" {
