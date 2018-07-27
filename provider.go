@@ -49,8 +49,9 @@ func Provider() terraform.ResourceProvider {
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"okta_app":                resourceApp(),
-			"okta_app_idp_attachment": resourceAppIpdAttachment(),
+			"okta_app":                      resourceApp(),
+			"okta_app_idp_attachment":       resourceAppIpdAttachment(),
+			"okta_app_provisioner_settings": resourceAppProvisionerSettings(),
 		},
 		ConfigureFunc: configureProvider,
 	}
