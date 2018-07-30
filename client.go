@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -222,7 +223,7 @@ func (o *OktaClient) DeleteApplication(appID string) error {
 }
 
 func (o *OktaClient) SetProvisioningSettings(appID string, oktaAWSKey string, oktaAWSSecretKey string) error {
-	fmt.Println("[DEBUG] Running SetProvisioningSettings method...")
+	log.Println("[DEBUG] Running SetProvisioningSettings method...")
 	authBody := fmt.Sprintf(`{"username":"%s", "password":"%s"}`, o.UserName, o.Password)
 
 	cookieJar, _ := cookiejar.New(nil)
@@ -235,9 +236,9 @@ func (o *OktaClient) SetProvisioningSettings(appID string, oktaAWSKey string, ok
 
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println("[ERROR] SetProvisioningSettings: Failed to POST to authn route....")
-		fmt.Println(authBody)
-		return err
+		log.Println("[ERROR] SetProvisioningSettings: Failed to POST to authn route....")
+		log.Println(authBody)
+		panic(err)
 	}
 
 	defer res.Body.Close()
@@ -254,9 +255,9 @@ func (o *OktaClient) SetProvisioningSettings(appID string, oktaAWSKey string, ok
 
 	_, err2 := client.Do(req2)
 	if err2 != nil {
-		fmt.Println("[ERROR] SetProvisioningSettings: Failed to GET to sessionCookieRedirect route....")
-		fmt.Println(cookieUrl)
-		return err2
+		log.Println("[ERROR] SetProvisioningSettings: Failed to GET to sessionCookieRedirect route....")
+		log.Println(cookieUrl)
+		panic(err2)
 	}
 
 	// ---------------
@@ -267,9 +268,9 @@ func (o *OktaClient) SetProvisioningSettings(appID string, oktaAWSKey string, ok
 
 	_, err3 := client.Do(req3)
 	if err3 != nil {
-		fmt.Println("[ERROR] SetProvisioningSettings: Failed to GET to userHomeUrl route....")
-		fmt.Println(userHomeUrl)
-		return err3
+		log.Println("[ERROR] SetProvisioningSettings: Failed to GET to userHomeUrl route....")
+		log.Println(userHomeUrl)
+		panic(err3)
 	}
 
 	// ---------------
@@ -280,9 +281,9 @@ func (o *OktaClient) SetProvisioningSettings(appID string, oktaAWSKey string, ok
 
 	oneResp, err4 := client.Do(req4)
 	if err4 != nil {
-		fmt.Println("[ERROR] SetProvisioningSettings: Failed to GET to saasure route....")
-		fmt.Println(oneUrl)
-		return err4
+		log.Println("[ERROR] SetProvisioningSettings: Failed to GET to saasure route....")
+		log.Println(oneUrl)
+		panic(err4)
 	}
 
 	ssoToken := getSsoToken(oneResp.Body)
@@ -298,9 +299,9 @@ func (o *OktaClient) SetProvisioningSettings(appID string, oktaAWSKey string, ok
 
 	ssoResp, err5 := client.Do(req5)
 	if err5 != nil {
-		fmt.Println("[ERROR] SetProvisioningSettings: Failed to POST to admin sso route....")
-		fmt.Println(postData.Encode())
-		return err5
+		log.Println("[ERROR] SetProvisioningSettings: Failed to POST to admin sso route....")
+		log.Println(postData.Encode())
+		panic(err5)
 	}
 
 	xsrfToken := getXsrfToken(ssoResp.Body)
@@ -326,12 +327,12 @@ func (o *OktaClient) SetProvisioningSettings(appID string, oktaAWSKey string, ok
 
 	_, err6 := client.Do(req6)
 	if err6 != nil {
-		fmt.Println("[ERROR] SetProvisioningSettings: Failed to POST to app update route....")
-		fmt.Println(updateAppData.Encode())
-		return err6
+		log.Println("[ERROR] SetProvisioningSettings: Failed to POST to app update route....")
+		log.Println(updateAppData.Encode())
+		panic(err6)
 	}
 
-	fmt.Println("[DEBUG] Successfully ran SetProvisioningSettings method...")
+	log.Println("[DEBUG] Successfully ran SetProvisioningSettings method...")
 	return nil
 }
 
