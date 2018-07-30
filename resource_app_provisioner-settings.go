@@ -41,6 +41,8 @@ func resourceAppProvisionerSettingsCreate(d *schema.ResourceData, m interface{})
 		return provisionErr
 	}
 
+	d.SetId(awsKey)
+
 	return nil
 }
 
