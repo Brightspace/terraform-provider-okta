@@ -14,7 +14,7 @@ jobs:
           name: Build
           command: go build -v
       - run:
-          name: Build
+          name: Test
           command: go test -v -race
   package:
     docker:
@@ -30,9 +30,9 @@ jobs:
             GORELEASER_URL: "https://github.com/goreleaser/goreleaser/releases/download/v0.82.1/goreleaser_Linux_x86_64.tar.gz"
           name: Download goreleaser
           command: curl -L -s ${GORELEASER_URL} | sudo tar zxvf - -C /usr/local/bin
-      # - run:
-      #     name: Release
-      #     command: /usr/local/bin/goreleaser
+      - run:
+          name: Release
+          command: /usr/local/bin/goreleaser
 
 
 workflows:
@@ -49,5 +49,5 @@ workflows:
           filters:
             tags:
               only: /.*/
-            # branches:
-            #   ignore: /.*/
+            branches:
+              ignore: /.*/
