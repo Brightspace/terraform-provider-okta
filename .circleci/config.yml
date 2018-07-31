@@ -1,0 +1,50 @@
+version: 2
+
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.9
+    working_directory: /go/src/github.com/Brightspace/terraform-provider-okta
+    steps:
+      - checkout
+      - run:
+          name: Dependencies
+          command: go get -v -t -d
+      - run:
+          name: Build
+          command: go build
+  package:
+    docker:
+      - image: circleci/golang:1.9
+    working_directory: /go/src/github.com/Brightspace/terraform-provider-okta
+    steps:
+      - checkout
+      - run:
+          name: Dependencies
+          command: go get -v -t -d
+      - run:
+          environment:
+            GORELEASER_URL: "https://github.com/goreleaser/goreleaser/releases/download/v0.82.1/goreleaser_Linux_x86_64.tar.gz"
+          name: Download goreleaser
+          command: curl -L -s ${GORELEASER_URL} | sudo tar zxvf - -C /usr/local/bin
+      - run:
+          name: Release
+          command: /usr/local/bin/goreleaser
+        
+
+workflows:
+  version: 2
+  ci-workflow:
+    jobs:
+      - build:
+          filters:
+            tags:
+              only: /.*/
+      - package:
+          requires:
+            - build
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
