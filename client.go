@@ -66,6 +66,10 @@ type OktaGroupProfileSaml struct {
 	SamlRoles []string `json:"samlRoles,omitempty"`
 }
 
+type OktaUserID struct {
+	ID string `json:"id"`
+}
+
 func NewClient(c *Config) OktaClient {
 	client = initHTTPClient()
 
@@ -281,7 +285,7 @@ func (o *OktaClient) CreateGroup(groupName string, groupDescription string) (str
 func (o *OktaClient) UpdateGroup(groupID string, groupName string, groupDescription string) error {
 	group := OktaGroup{
 		Profile: OktaGroupProfile{
-			Name: groupName,
+			Name:        groupName,
 			Description: groupDescription,
 		},
 	}
@@ -289,7 +293,7 @@ func (o *OktaClient) UpdateGroup(groupID string, groupName string, groupDescript
 
 	body, err := json.Marshal(group)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(body))
@@ -297,9 +301,9 @@ func (o *OktaClient) UpdateGroup(groupID string, groupName string, groupDescript
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	res, err := client.Do(req)
-	if err != nil {
-		return err
+	_, err2 := client.Do(req)
+	if err2 != nil {
+		return err2
 	}
 
 	return nil
@@ -345,7 +349,12 @@ func (o *OktaClient) GetGroup(groupID string) (OktaGroup, error) {
 	return groupOutput, nil
 }
 
-func (o *OktaClient) AddMemeberToGroup(groupID string, userID string) error {
+func (o *OktaClient) AddMemeberToGroup(groupID string, user string) error {
+	userID, err := o.GetUserIDByEmail(user)
+	if err != nil {
+		return err
+	}
+
 	url := fmt.Sprintf("%s/api/v1/groups/%s/users/%s", o.OktaURL, groupID, userID)
 
 	req, _ := http.NewRequest("PUT", url, nil)
@@ -353,12 +362,36 @@ func (o *OktaClient) AddMemeberToGroup(groupID string, userID string) error {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	_, err := client.Do(req)
-	if err != nil {
-		return err
+	_, err2 := client.Do(req)
+	if err2 != nil {
+		return err2
 	}
 
 	return nil
+}
+
+func (o *OktaClient) GetUserIDByEmail(user string) (string, error) {
+	var oktaUserId []OktaUserID
+	url := fmt.Sprintf("%s/api/v1/users?q=%s&limit=1", o.OktaURL, user)
+
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
+
+	res, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	defer res.Body.Close()
+
+	err = json.NewDecoder(res.Body).Decode(&oktaUserId)
+	if err != nil {
+		return "", err
+	}
+
+	return oktaUserId[0].ID, nil
 }
 
 func (o *OktaClient) RemoveMemeberFromGroup(groupID string, userID string) error {
@@ -383,14 +416,14 @@ func (o *OktaClient) AssignGroupToApp(appID string, groupID string, samlRole str
 	samlGroup := OktaGroupSaml{
 		ID: groupID,
 		Profile: OktaGroupProfileSaml{
-			Role: samlRole,
-			SamlRoles: [samlRole],
+			Role:      samlRole,
+			SamlRoles: []string{samlRole, "hghfgh"},
 		},
 	}
 
 	body, err := json.Marshal(samlGroup)
 	if err != nil {
-		return app, err
+		return err
 	}
 
 	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(body))
@@ -398,10 +431,12 @@ func (o *OktaClient) AssignGroupToApp(appID string, groupID string, samlRole str
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	_, err := client.Do(req)
-	if err != nil {
-		return app, err
+	_, err2 := client.Do(req)
+	if err2 != nil {
+		return err2
 	}
+
+	return nil
 }
 
 func (o *OktaClient) SetProvisioningSettings(appID string, oktaAWSKey string, oktaAWSSecretKey string) error {

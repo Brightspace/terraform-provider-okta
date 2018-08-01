@@ -23,12 +23,20 @@ func resourceAppGroup() *schema.Resource {
 				Optional: true,
 				Default:  "",
 			},
+			"members": &schema.Schema{
+				Type: schema.TypeList,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Optional: true,
+			},
 		},
 	}
 }
 
 func resourceAppGroupCreate(d *schema.ResourceData, m interface{}) error {
 	client := m.(OktaClient)
+	groupMembers := d.Get("members").([]string)
 
 	groupID, err := client.CreateGroup(d.Get("name").(string), d.Get("description").(string))
 	if err != nil {
@@ -36,6 +44,13 @@ func resourceAppGroupCreate(d *schema.ResourceData, m interface{}) error {
 	}
 
 	d.SetId(groupID)
+
+	for _, member := range groupMembers {
+		err := client.AddMemeberToGroup(groupID, member)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
