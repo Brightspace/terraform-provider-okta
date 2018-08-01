@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 
+	"time"
+
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
@@ -97,12 +99,24 @@ func resourceApp() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+			"aws_okta_iam_user_id": &schema.Schema{
+				Type:      schema.TypeString,
+				Required:  true,
+				Sensitive: true,
+			},
+			"aws_okta_iam_user_secret": &schema.Schema{
+				Type:      schema.TypeString,
+				Required:  true,
+				Sensitive: true,
+			},
 		},
 	}
 }
 
 func resourceAppCreate(d *schema.ResourceData, m interface{}) error {
 	client := m.(OktaClient)
+	awsKey := d.Get("aws_okta_iam_user_id").(string)
+	awsSecret := d.Get("aws_okta_iam_user_secret").(string)
 
 	application := Application{
 		Name:       d.Get("name").(string),
@@ -110,12 +124,13 @@ func resourceAppCreate(d *schema.ResourceData, m interface{}) error {
 		SignOnMode: d.Get("sign_on_mode").(string),
 		Settings: Settings{
 			App: AppSettings{
-				AwsEnvironmentType: d.Get("aws_environment_type").(string),
-				GroupFilter:        d.Get("group_filter").(string),
-				LoginURL:           d.Get("login_url").(string),
-				JoinAllRoles:       d.Get("join_all_roles").(bool),
-				SessionDuration:    d.Get("session_duration").(int),
-				RoleValuePattern:   d.Get("role_value_pattern").(string),
+				AwsEnvironmentType:  d.Get("aws_environment_type").(string),
+				GroupFilter:         d.Get("group_filter").(string),
+				LoginURL:            d.Get("login_url").(string),
+				JoinAllRoles:        d.Get("join_all_roles").(bool),
+				SessionDuration:     d.Get("session_duration").(int),
+				RoleValuePattern:    d.Get("role_value_pattern").(string),
+				IdentityProviderArn: d.Get("identity_provider_arn").(string),
 			},
 		},
 	}
@@ -128,6 +143,12 @@ func resourceAppCreate(d *schema.ResourceData, m interface{}) error {
 	samlMetadataDocument, err := client.GetSAMLMetaData(createdApplication.ID, createdApplication.Credentials.Signing.KeyID)
 	if err != nil {
 		return err
+	}
+
+	time.Sleep(30 * time.Second)
+	provisionErr := client.SetProvisioningSettings(createdApplication.ID, awsKey, awsSecret)
+	if provisionErr != nil {
+		return provisionErr
 	}
 
 	fmt.Printf("%+v\n", createdApplication)
