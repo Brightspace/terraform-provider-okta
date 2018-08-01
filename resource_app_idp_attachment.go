@@ -43,6 +43,9 @@ func resourceAppIpdAttachmentCreate(d *schema.ResourceData, m interface{}) error
 		return updateErr
 	}
 
+	d.SetId(appID)
+	d.Set("Arn", ipdArn)
+
 	return nil
 }
 
