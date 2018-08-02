@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/terraform/helper/schema"
 )
@@ -30,37 +31,67 @@ func resourceAppGroup() *schema.Resource {
 				},
 				Optional: true,
 			},
+			"app_id": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "",
+			},
+			"saml_role": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "",
+			},
 		},
 	}
 }
 
 func resourceAppGroupCreate(d *schema.ResourceData, m interface{}) error {
 	client := m.(OktaClient)
-	groupMembers := d.Get("members").([]string)
+	groupMembers := d.Get("members").([]interface{})
 
 	groupID, err := client.CreateGroup(d.Get("name").(string), d.Get("description").(string))
 	if err != nil {
 		return err
 	}
 
-	d.SetId(groupID)
-
-	for _, member := range groupMembers {
-		err := client.AddMemeberToGroup(groupID, member)
-		if err != nil {
-			return err
-		}
+	members := make([]string, len(groupMembers))
+	for i, member := range groupMembers {
+		members[i] = member.(string)
 	}
+
+	err2 := client.SyncUsersToGroup(groupID, members)
+	if err2 != nil {
+		return err2
+	}
+
+	time.Sleep(5 * time.Second)
+	err3 := client.AssignGroupToApp(d.Get("app_id").(string), groupID, d.Get("saml_role").(string))
+	if err3 != nil {
+		return err3
+	}
+
+	d.SetId(groupID)
 
 	return nil
 }
 
 func resourceAppGroupUpdate(d *schema.ResourceData, m interface{}) error {
 	client := m.(OktaClient)
+	groupMembers := d.Get("members").([]interface{})
 
-	err := client.UpdateGroup(d.Get("id").(string), d.Get("name").(string), d.Get("description").(string))
+	err := client.UpdateGroup(d.Id(), d.Get("name").(string), d.Get("description").(string))
 	if err != nil {
 		return err
+	}
+
+	members := make([]string, len(groupMembers))
+	for i, member := range groupMembers {
+		members[i] = member.(string)
+	}
+
+	err2 := client.SyncUsersToGroup(d.Id(), members)
+	if err2 != nil {
+		return err2
 	}
 
 	return nil
@@ -69,7 +100,7 @@ func resourceAppGroupUpdate(d *schema.ResourceData, m interface{}) error {
 func resourceAppGroupRead(d *schema.ResourceData, m interface{}) error {
 	client := m.(OktaClient)
 
-	group, err := client.GetGroup(d.Get("id").(string))
+	group, err := client.GetGroup(d.Id())
 	if err != nil {
 		return err
 	}
