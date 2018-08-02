@@ -23,7 +23,7 @@ provider "okta" {
 
 resource "okta_app" "my-app" {
   name                     = "amazon_aws"
-  label                    = "D2L-Terraform-Test-4"
+  label                    = "D2L-Terraform-Test"
   sign_on_mode             = "SAML_2_0"
   aws_environment_type     = "aws.amazon"
   group_filter             = "aws_(?${var.aws_account_id}\\d+)_(?${var.aws_role}[a-zA-Z0-9+=,.@\\-_]+)"
@@ -35,6 +35,14 @@ resource "okta_app" "my-app" {
   aws_okta_iam_user_secret = "${var.okta_aws_user_secret}"
 }
 
+resource "okta_app_group" "my-group" {
+  name        = "D2L-Terraform-Group-Test"
+  description = "Test group from terraform provider"
+  members     = ["sean.cowing@d2l.com", "Derek.Steinmoeller@d2l.com", "Jonathan.Beverly@D2L.com"]
+  app_id      = "${okta_app.my-app.id}"
+  saml_role   = "Dev-NDE-User"
+}
+
 output "saml_metadata_document" {
   value = "${okta_app.my-app.saml_metadata_document}"
 }
@@ -42,16 +50,3 @@ output "saml_metadata_document" {
 output "okta_app_id" {
   value = "${okta_app.my-app.id}"
 }
-
-/* resource "okta_app_provisioner_settings" "my-provisioner" {
-  app_id                   = "${okta_app.my-app.id}"
-  aws_okta_iam_user_id     = "${var.okta_aws_user_id}"
-  aws_okta_iam_user_secret = "${var.okta_aws_user_secret}"
-} */
-
-
-/* resource "okta_app_idp_attachment" "my-idp" {
-  app_id                = "${okta_app.my-app.id}"
-  identity_provider_arn = "arn:aws:iam::852561389367:saml-provider/Okta"
-} */
-
