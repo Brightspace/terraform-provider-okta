@@ -368,7 +368,7 @@ func (o *OktaClient) GetGroup(groupID string) (OktaGroup, error) {
 	return groupOutput, nil
 }
 
-func (o *OktaClient) AddMemeberToGroup(groupID string, userID string) error {
+func (o *OktaClient) AddMemberToGroup(groupID string, userID string) error {
 	url := fmt.Sprintf("%s/api/v1/groups/%s/users/%s", o.OktaURL, groupID, userID)
 
 	req, _ := http.NewRequest("PUT", url, nil)
@@ -401,7 +401,7 @@ func (o *OktaClient) SyncUsersToGroup(groupID string, members []string) error {
 
 	for _, groupMember := range groupMembers {
 		if newMembers[groupMember.ID] == "" {
-			err := o.RemoveMemeberFromGroup(groupID, groupMember.ID)
+			err := o.RemoveMemberFromGroup(groupID, groupMember.ID)
 			if err != nil {
 				return err
 			}
@@ -409,7 +409,7 @@ func (o *OktaClient) SyncUsersToGroup(groupID string, members []string) error {
 	}
 
 	for newMemberID := range newMembers {
-		err := o.AddMemeberToGroup(groupID, newMemberID)
+		err := o.AddMemberToGroup(groupID, newMemberID)
 		if err != nil {
 			return err
 		}
@@ -466,7 +466,7 @@ func (o *OktaClient) GetUsersInGroup(groupID string) ([]OktaUser, error) {
 	return oktaUsers, nil
 }
 
-func (o *OktaClient) RemoveMemeberFromGroup(groupID string, userID string) error {
+func (o *OktaClient) RemoveMemberFromGroup(groupID string, userID string) error {
 	url := fmt.Sprintf("%s/api/v1/groups/%s/users/%s", o.OktaURL, groupID, userID)
 
 	req, _ := http.NewRequest("DELETE", url, nil)
