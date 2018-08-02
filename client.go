@@ -42,6 +42,53 @@ type OktaAuthResponse struct {
 	Status       string    `json:"status"`
 }
 
+type OktaGroup struct {
+	ID                    string           `json:"id,omitempty"`
+	Created               *time.Time       `json:"created,omitempty"`
+	LastUpdated           *time.Time       `json:"lastUpdated,omitempty"`
+	LastMembershipUpdated *time.Time       `json:"lastMembershipUpdated,omitempty"`
+	ObjectClass           []string         `json:"objectClass,omitempty"`
+	Type                  string           `json:"type,omitempty"`
+	Profile               OktaGroupProfile `json:"profile"`
+}
+
+type OktaGroupProfile struct {
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+type OktaGroupSaml struct {
+	ID      string               `json:"id,omitempty"`
+	Profile OktaGroupProfileSaml `json:"profile"`
+}
+
+type OktaGroupProfileSaml struct {
+	Role      string   `json:"role,omitempty"`
+	SamlRoles []string `json:"samlRoles,omitempty"`
+}
+
+type OktaUser struct {
+	ID              string          `json:"id"`
+	Status          string          `json:"status"`
+	Created         *time.Time      `json:"created,omitempty"`
+	Activated       *time.Time      `json:"activated,omitempty"`
+	StatusChanged   *time.Time      `json:"statusChanged,omitempty"`
+	LastLogin       *time.Time      `json:"lastLogin,omitempty"`
+	LastUpdated     *time.Time      `json:"lastUpdated,omitempty"`
+	PasswordChanged *time.Time      `json:"passwordChanged,omitempty"`
+	Profile         OktaUserProfile `json:"profile,omitempty"`
+}
+
+type OktaUserProfile struct {
+	Login       string `json:"login,omitempty"`
+	FirstName   string `json:"firstName,omitempty"`
+	LastName    string `json:"lastName,omitempty"`
+	NickName    string `json:"nickName,omitempty"`
+	DisplayName string `json:"displayName,omitempty"`
+	Email       string `json:"email,omitempty"`
+	SecondEmail string `json:"secondEmail,omitempty"`
+}
+
 func NewClient(c *Config) OktaClient {
 	client = initHTTPClient()
 
@@ -217,6 +264,248 @@ func (o *OktaClient) DeleteApplication(appID string) error {
 		msg := buf.String()
 
 		return fmt.Errorf("Error deleting application in Okta: %s", msg)
+	}
+
+	return nil
+}
+
+func (o *OktaClient) CreateGroup(groupName string, groupDescription string) (string, error) {
+	var groupInput OktaGroup
+	var groupOutput OktaGroup
+	groupInput.Profile.Name = groupName
+	groupInput.Profile.Description = groupDescription
+	url := fmt.Sprintf("%s/api/v1/groups", o.OktaURL)
+
+	body, err := json.Marshal(groupInput)
+	if err != nil {
+		return "", err
+	}
+
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
+
+	res, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	defer res.Body.Close()
+
+	err = json.NewDecoder(res.Body).Decode(&groupOutput)
+	if err != nil {
+		return "", err
+	}
+
+	return groupOutput.ID, nil
+}
+
+func (o *OktaClient) UpdateGroup(groupID string, groupName string, groupDescription string) error {
+	group := OktaGroup{
+		Profile: OktaGroupProfile{
+			Name:        groupName,
+			Description: groupDescription,
+		},
+	}
+	url := fmt.Sprintf("%s/api/v1/groups/%s", o.OktaURL, groupID)
+
+	body, err := json.Marshal(group)
+	if err != nil {
+		return err
+	}
+
+	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
+
+	_, err2 := client.Do(req)
+	if err2 != nil {
+		return err2
+	}
+
+	return nil
+}
+
+func (o *OktaClient) DeleteGroup(groupID string) error {
+	url := fmt.Sprintf("%s/api/v1/groups/%s", o.OktaURL, groupID)
+
+	req, _ := http.NewRequest("DELETE", url, nil)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
+
+	_, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (o *OktaClient) GetGroup(groupID string) (OktaGroup, error) {
+	var groupOutput OktaGroup
+	url := fmt.Sprintf("%s/api/v1/groups/%s", o.OktaURL, groupID)
+
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
+
+	res, err := client.Do(req)
+	if err != nil {
+		return groupOutput, err
+	}
+
+	defer res.Body.Close()
+
+	err = json.NewDecoder(res.Body).Decode(&groupOutput)
+	if err != nil {
+		return groupOutput, err
+	}
+
+	return groupOutput, nil
+}
+
+func (o *OktaClient) AddMemberToGroup(groupID string, userID string) error {
+	url := fmt.Sprintf("%s/api/v1/groups/%s/users/%s", o.OktaURL, groupID, userID)
+
+	req, _ := http.NewRequest("PUT", url, nil)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
+
+	_, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (o *OktaClient) SyncUsersToGroup(groupID string, members []string) error {
+	newMembers := make(map[string]string)
+	for _, member := range members {
+		memberID, err := o.GetUserIDByEmail(member)
+		if err != nil {
+			return err
+		}
+		newMembers[memberID] = member
+	}
+
+	groupMembers, err := o.GetUsersInGroup(groupID)
+	if err != nil {
+		return err
+	}
+
+	for _, groupMember := range groupMembers {
+		if newMembers[groupMember.ID] == "" {
+			err := o.RemoveMemberFromGroup(groupID, groupMember.ID)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	for newMemberID := range newMembers {
+		err := o.AddMemberToGroup(groupID, newMemberID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (o *OktaClient) GetUserIDByEmail(user string) (string, error) {
+	var oktaUser []OktaUser
+	url := fmt.Sprintf("%s/api/v1/users?q=%s&limit=1", o.OktaURL, user)
+
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
+
+	res, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	defer res.Body.Close()
+
+	err = json.NewDecoder(res.Body).Decode(&oktaUser)
+	if err != nil {
+		return "", err
+	}
+
+	return oktaUser[0].ID, nil
+}
+
+func (o *OktaClient) GetUsersInGroup(groupID string) ([]OktaUser, error) {
+	oktaUsers := make([]OktaUser, 0)
+	url := fmt.Sprintf("%s/api/v1/groups/%s/users", o.OktaURL, groupID)
+
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
+
+	res, err := client.Do(req)
+	if err != nil {
+		return oktaUsers, err
+	}
+
+	defer res.Body.Close()
+
+	err = json.NewDecoder(res.Body).Decode(&oktaUsers)
+	if err != nil {
+		return oktaUsers, err
+	}
+
+	return oktaUsers, nil
+}
+
+func (o *OktaClient) RemoveMemberFromGroup(groupID string, userID string) error {
+	url := fmt.Sprintf("%s/api/v1/groups/%s/users/%s", o.OktaURL, groupID, userID)
+
+	req, _ := http.NewRequest("DELETE", url, nil)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
+
+	_, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (o *OktaClient) AssignGroupToApp(appID string, groupID string, samlRole string) error {
+	url := fmt.Sprintf("%s/api/v1/apps/%s/groups/%s", o.OktaURL, appID, groupID)
+
+	samlGroup := OktaGroupSaml{
+		ID: groupID,
+		Profile: OktaGroupProfileSaml{
+			Role:      samlRole,
+			SamlRoles: []string{samlRole},
+		},
+	}
+
+	body, err := json.Marshal(samlGroup)
+	if err != nil {
+		return err
+	}
+
+	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
+
+	_, err2 := client.Do(req)
+	if err2 != nil {
+		return err2
 	}
 
 	return nil
