@@ -376,9 +376,9 @@ func (o *OktaClient) AddMemberToGroup(groupID string, userID string) error {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	_, err2 := client.Do(req)
-	if err2 != nil {
-		return err2
+	_, err := client.Do(req)
+	if err != nil {
+		return err
 	}
 
 	return nil
