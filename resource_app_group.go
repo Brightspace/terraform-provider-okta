@@ -64,7 +64,7 @@ func resourceAppGroupCreate(d *schema.ResourceData, m interface{}) error {
 		return err2
 	}
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(10 * time.Second)
 	err3 := client.AssignGroupToApp(d.Get("app_id").(string), groupID, d.Get("saml_role").(string))
 	if err3 != nil {
 		return err3
