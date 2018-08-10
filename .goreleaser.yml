@@ -5,6 +5,8 @@ builds:
     - windows
   goarch:
   - amd64
+archive:
+  format: zip
 s3:
 -
   bucket: d2l-terraform-registry
