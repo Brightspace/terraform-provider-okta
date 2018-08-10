@@ -1,6 +1,3 @@
-before:
-  hooks:
-  - go get -v -t -d
 builds:
 - main: main.go
   binary: terraform-provider-okta_v{{.Version}}
