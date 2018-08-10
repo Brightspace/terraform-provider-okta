@@ -1,8 +1,16 @@
-# This is an example goreleaser.yaml file with some sane defaults.
-# Make sure to check the documentation at http://goreleaser.com
+before:
+  hooks:
+  - go get -v -t -d
 builds:
-- goos:
-  - linux
-  - windows
+- main: main.go
+  binary: terraform-provider-okta_v{{.Version}}
+  goos:
+    - linux
+    - windows
   goarch:
   - amd64
+s3:
+-
+  bucket: d2l-terraform-registry
+  region: us-east-1
+  folder: "providers/terraform-provider-okta/{{.Version}}"
