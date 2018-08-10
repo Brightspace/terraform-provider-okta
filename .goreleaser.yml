@@ -1,6 +1,5 @@
 builds:
-- main: main.go
-  binary: terraform-provider-okta_v{{.Version}}
+- binary: terraform-provider-okta_v{{.Version}}
   goos:
     - linux
     - windows
