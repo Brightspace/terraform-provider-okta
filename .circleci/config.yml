@@ -23,13 +23,10 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Dependencies
-          command: go get -v -t -d
-      - run:
           environment:
             GORELEASER_URL: "https://github.com/goreleaser/goreleaser/releases/download/v0.82.1/goreleaser_Linux_x86_64.tar.gz"
           name: Download goreleaser
-          command: curl -L -s ${GORELEASER_URL} | sudo tar zxvf - -C /usr/local/bin
+          command: curl -L -s ${GORELEASER_URL} | sudo tar zxf - -C /usr/local/bin
       - run:
           name: Release
           command: /usr/local/bin/goreleaser
