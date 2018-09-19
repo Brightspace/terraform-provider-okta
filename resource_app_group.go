@@ -100,10 +100,24 @@ func resourceAppGroupUpdate(d *schema.ResourceData, m interface{}) error {
 func resourceAppGroupRead(d *schema.ResourceData, m interface{}) error {
 	client := m.(OktaClient)
 
-	group, err := client.GetGroup(d.Id())
+	group, groupMembers, groupRemoved, err := client.GetGroup(d.Id())
 	if err != nil {
 		return err
 	}
+
+	if groupRemoved == true {
+		d.SetId("")
+		return nil
+	}
+
+	members := make([]interface{}, len(groupMembers))
+	for i, groupMember := range groupMembers {
+		members[i] = groupMember.Profile.Login
+	}
+
+	d.Set("name", group.Profile.Name)
+	d.Set("description", group.Profile.Description)
+	d.Set("members", members)
 
 	fmt.Printf("%+v\n", group)
 	return nil
