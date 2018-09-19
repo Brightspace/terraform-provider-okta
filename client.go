@@ -178,7 +178,7 @@ func (o *OktaClient) UpdateApplication(application Application) (Application, er
 		buf.ReadFrom(res.Body)
 		msg := buf.String()
 
-		return app, fmt.Errorf("Error updating application in Okta: %s", msg)
+		return app, fmt.Errorf("Error updating application in Okta: %s \nRequest Body: %s", msg, string(body))
 	}
 
 	err = json.NewDecoder(res.Body).Decode(&app)
@@ -189,7 +189,7 @@ func (o *OktaClient) UpdateApplication(application Application) (Application, er
 	return app, nil
 }
 
-func (o *OktaClient) ReadApplication(appID string) (Application, error) {
+func (o *OktaClient) ReadApplication(appID string) (Application, bool, error) {
 	var app Application
 	url := fmt.Sprintf("%s/api/v1/apps/%s", o.OktaURL, appID)
 
@@ -200,15 +200,19 @@ func (o *OktaClient) ReadApplication(appID string) (Application, error) {
 
 	res, err := client.Do(req)
 	if err != nil {
-		return app, err
+		return app, false, err
+	}
+
+	if res.StatusCode == 404 {
+		return app, true, nil
 	}
 
 	err = json.NewDecoder(res.Body).Decode(&app)
 	if err != nil {
-		return app, err
+		return app, false, err
 	}
 
-	return app, err
+	return app, false, err
 }
 
 func (o *OktaClient) GetSAMLMetaData(appID string, keyID string) (string, error) {
@@ -344,7 +348,7 @@ func (o *OktaClient) DeleteGroup(groupID string) error {
 	return nil
 }
 
-func (o *OktaClient) GetGroup(groupID string) (OktaGroup, error) {
+func (o *OktaClient) GetGroup(groupID string) (OktaGroup, []OktaUser, bool, error) {
 	var groupOutput OktaGroup
 	url := fmt.Sprintf("%s/api/v1/groups/%s", o.OktaURL, groupID)
 
@@ -355,17 +359,26 @@ func (o *OktaClient) GetGroup(groupID string) (OktaGroup, error) {
 
 	res, err := client.Do(req)
 	if err != nil {
-		return groupOutput, err
+		return groupOutput, nil, false, err
 	}
 
 	defer res.Body.Close()
 
-	err = json.NewDecoder(res.Body).Decode(&groupOutput)
-	if err != nil {
-		return groupOutput, err
+	if res.StatusCode == 404 {
+		return groupOutput, nil, true, nil
 	}
 
-	return groupOutput, nil
+	err = json.NewDecoder(res.Body).Decode(&groupOutput)
+	if err != nil {
+		return groupOutput, nil, false, err
+	}
+
+	groupMembers, err := o.GetUsersInGroup(groupID)
+	if err != nil {
+		return groupOutput, nil, false, err
+	}
+
+	return groupOutput, groupMembers, false, nil
 }
 
 func (o *OktaClient) AddMemberToGroup(groupID string, userID string) error {
