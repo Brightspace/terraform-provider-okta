@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/hashicorp/terraform/helper/schema"
@@ -100,10 +101,25 @@ func resourceAppGroupUpdate(d *schema.ResourceData, m interface{}) error {
 func resourceAppGroupRead(d *schema.ResourceData, m interface{}) error {
 	client := m.(OktaClient)
 
-	group, err := client.GetGroup(d.Id())
+	group, groupMembers, groupRemoved, err := client.GetGroup(d.Id())
 	if err != nil {
 		return err
 	}
+
+	if groupRemoved == true {
+		log.Printf("[WARN] Okta Group %s (%q) not found, removing from state", d.Get("name").(string), d.Id())
+		d.SetId("")
+		return nil
+	}
+
+	members := make([]interface{}, len(groupMembers))
+	for i, groupMember := range groupMembers {
+		members[i] = groupMember.Profile.Login
+	}
+
+	d.Set("name", group.Profile.Name)
+	d.Set("description", group.Profile.Description)
+	d.Set("members", members)
 
 	fmt.Printf("%+v\n", group)
 	return nil

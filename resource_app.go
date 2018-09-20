@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"time"
 
@@ -162,10 +163,27 @@ func resourceAppRead(d *schema.ResourceData, m interface{}) error {
 	client := m.(OktaClient)
 	appID := d.Id()
 
-	readApplication, err := client.ReadApplication(appID)
+	readApplication, applicationRemoved, err := client.ReadApplication(appID)
 	if err != nil {
 		return err
 	}
+
+	if applicationRemoved == true {
+		log.Printf("[WARN] Okta Application %s (%q) not found, removing from state", d.Get("label").(string), d.Id())
+		d.SetId("")
+		return nil
+	}
+
+	d.Set("name", readApplication.Name)
+	d.Set("label", readApplication.Label)
+	d.Set("sign_on_mode", readApplication.SignOnMode)
+	d.Set("aws_environment_type", readApplication.Settings.App.AwsEnvironmentType)
+	d.Set("group_filter", readApplication.Settings.App.GroupFilter)
+	d.Set("login_url", readApplication.Settings.App.LoginURL)
+	d.Set("join_all_roles", readApplication.Settings.App.JoinAllRoles)
+	d.Set("identity_provider_arn", readApplication.Settings.App.IdentityProviderArn)
+	d.Set("session_duration", readApplication.Settings.App.SessionDuration)
+	d.Set("role_value_pattern", readApplication.Settings.App.RoleValuePattern)
 
 	fmt.Printf("%+v\n", readApplication)
 	return nil
@@ -175,6 +193,7 @@ func resourceAppUpdate(d *schema.ResourceData, m interface{}) error {
 	client := m.(OktaClient)
 
 	application := Application{
+		ID:         d.Id(),
 		Name:       d.Get("name").(string),
 		Label:      d.Get("label").(string),
 		SignOnMode: d.Get("sign_on_mode").(string),
