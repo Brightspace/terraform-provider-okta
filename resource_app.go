@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"time"
 
@@ -168,6 +169,7 @@ func resourceAppRead(d *schema.ResourceData, m interface{}) error {
 	}
 
 	if applicationRemoved == true {
+		log.Printf("[WARN] Okta Application %s (%q) not found, removing from state", d.Get("label").(string), d.Id())
 		d.SetId("")
 		return nil
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/hashicorp/terraform/helper/schema"
@@ -106,6 +107,7 @@ func resourceAppGroupRead(d *schema.ResourceData, m interface{}) error {
 	}
 
 	if groupRemoved == true {
+		log.Printf("[WARN] Okta Group %s (%q) not found, removing from state", d.Get("name").(string), d.Id())
 		d.SetId("")
 		return nil
 	}
