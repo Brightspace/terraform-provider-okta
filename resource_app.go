@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"log"
 
-	"time"
-
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
@@ -146,7 +144,6 @@ func resourceAppCreate(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 
-	time.Sleep(30 * time.Second)
 	provisionErr := client.SetProvisioningSettings(createdApplication.ID, awsKey, awsSecret)
 	if provisionErr != nil {
 		return provisionErr
