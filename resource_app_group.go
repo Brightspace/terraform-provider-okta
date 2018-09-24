@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/hashicorp/terraform/helper/schema"
 )
@@ -65,7 +64,6 @@ func resourceAppGroupCreate(d *schema.ResourceData, m interface{}) error {
 		return err2
 	}
 
-	time.Sleep(10 * time.Second)
 	err3 := client.AssignGroupToApp(d.Get("app_id").(string), groupID, d.Get("saml_role").(string))
 	if err3 != nil {
 		return err3
