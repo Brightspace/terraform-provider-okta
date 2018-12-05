@@ -126,7 +126,7 @@ func resourceAppGroupRead(d *schema.ResourceData, m interface{}) error {
 func resourceAppGroupDelete(d *schema.ResourceData, m interface{}) error {
 	client := m.(OktaClient)
 
-	err := client.DeleteGroup(d.Get("id").(string))
+	err := client.DeleteGroup(d.Id())
 	if err != nil {
 		return err
 	}
