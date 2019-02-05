@@ -13,4 +13,4 @@ s3:
 -
   bucket: tfreg
   region: us-east-1
-  folder: "providers/{{.Name}}/{{.Version}}"
+  folder: "ace/providers/{{.Name}}/{{.Version}}"
