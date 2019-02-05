@@ -1,5 +1,5 @@
 builds:
-- binary: terraform-provider-okta_v{{.Version}}
+- binary: "{{.Name}}_v{{.Version}}"
   goos:
     - linux
     - windows
@@ -7,8 +7,3 @@ builds:
   - amd64
 archive:
   format: zip
-s3:
--
-  bucket: d2l-terraform-registry
-  region: us-east-1
-  folder: "providers/terraform-provider-okta/{{.Version}}"
