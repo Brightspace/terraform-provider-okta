@@ -7,3 +7,10 @@ builds:
   - amd64
 archive:
   format: zip
+release:
+  disable: true
+s3:
+-
+  bucket: tfreg
+  region: us-east-1
+  folder: "providers/{{.Name}}/{{.Version}}"
