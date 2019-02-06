@@ -25,6 +25,7 @@
 # Compiled files
 *.tfstate
 *.tfstate.*
+**/terraform.d/
 
 # Module directory
 .terraform/
