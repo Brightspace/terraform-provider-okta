@@ -279,6 +279,22 @@ func (o *OktaClient) DeleteApplication(appID string) error {
 	return nil
 }
 
+func (o *OktaClient) RemoveUserFromApp(appId string, userId string) error {
+	url := fmt.Sprintf("%s/api/v1/apps/%s/users/%s", o.OktaURL, appId, userId)
+
+	req, _ := http.NewRequest("DELETE", url, nil)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
+
+	_, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (o *OktaClient) ListAppMembers(appId string) ([]OktaUser, error) {
 	oktaUsers := make([]OktaUser, 0)
 	url := fmt.Sprintf("%s/api/v1/apps/%s/users", o.OktaURL, appId)
