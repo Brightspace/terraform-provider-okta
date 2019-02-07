@@ -94,7 +94,7 @@ type OktaUserProfile struct {
 	Email       string   `json:"email,omitempty"`
 	SecondEmail string   `json:"secondEmail,omitempty"`
 	Role        string   `json:"role,omitempty"`
-	SamlRoles   []string `json:"saml_roles,omitempty"`
+	SamlRoles   []string `json:"samlRoles,omitempty"`
 }
 
 func NewClient(c *Config) OktaClient {
