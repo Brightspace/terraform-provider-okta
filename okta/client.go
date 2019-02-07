@@ -86,13 +86,15 @@ type OktaUser struct {
 }
 
 type OktaUserProfile struct {
-	Login       string `json:"login,omitempty"`
-	FirstName   string `json:"firstName,omitempty"`
-	LastName    string `json:"lastName,omitempty"`
-	NickName    string `json:"nickName,omitempty"`
-	DisplayName string `json:"displayName,omitempty"`
-	Email       string `json:"email,omitempty"`
-	SecondEmail string `json:"secondEmail,omitempty"`
+	Login       string   `json:"login,omitempty"`
+	FirstName   string   `json:"firstName,omitempty"`
+	LastName    string   `json:"lastName,omitempty"`
+	NickName    string   `json:"nickName,omitempty"`
+	DisplayName string   `json:"displayName,omitempty"`
+	Email       string   `json:"email,omitempty"`
+	SecondEmail string   `json:"secondEmail,omitempty"`
+	Role        string   `json:"role,omitempty"`
+	SamlRoles   []string `json:"samlRoles,omitempty"`
 }
 
 func NewClient(c *Config) OktaClient {
@@ -277,6 +279,43 @@ func (o *OktaClient) DeleteApplication(appID string) error {
 	}
 
 	return nil
+}
+
+func (o *OktaClient) RemoveMemberFromApp(appId string, userId string) error {
+	url := fmt.Sprintf("%s/api/v1/apps/%s/users/%s", o.OktaURL, appId, userId)
+
+	req, _ := http.NewRequest("DELETE", url, nil)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
+
+	_, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (o *OktaClient) GetAppMember(appId string, userId string) (OktaUser, error) {
+	var user OktaUser
+	members, err := o.ListAppMembers(appId)
+	if err != nil {
+		return user, err
+	}
+
+	if len(members) == 0 {
+		return user, nil
+	}
+
+	for _, member := range members {
+		if member.ID == userId {
+			user = member
+			return user, nil
+		}
+	}
+
+	return user, fmt.Errorf("User %s is not assigned to app %s", userId, appId)
 }
 
 func (o *OktaClient) ListAppMembers(appId string) ([]OktaUser, error) {
