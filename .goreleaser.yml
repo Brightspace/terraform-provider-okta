@@ -1,5 +1,5 @@
 builds:
-- binary: "{{.Name}}_v{{.Version}}"
+- binary: "{{.ProjectName}}_v{{.Version}}"
   goos:
     - linux
     - windows
@@ -13,4 +13,4 @@ s3:
 -
   bucket: tfreg
   region: us-east-1
-  folder: "ace/providers/{{.Name}}/{{.Version}}"
+  folder: "ace/providers/{{.ProjectName}}/{{.Version}}"
