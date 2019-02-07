@@ -24,7 +24,7 @@ jobs:
       - checkout
       - run:
           name: Install awscli
-          command: sudo pip install awscli
+          command: apt update && apt install awscli
       - run:
           name: Dependencies
           command: go get -v -t -d
