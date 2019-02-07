@@ -13,6 +13,14 @@ build/win: fmtcheck
 get:
 	go get -v -d
 
+copy/linux:
+	mkdir -p "examples/appusers/terraform.d/plugins/linux_amd64/" 
+	cp "$(shell basename $(CURDIR))" "examples/appusers/terraform.d/plugins/linux_amd64/" 
+
+copy/win:
+	mkdir -p "examples/appusers/terraform.d/plugins/windows_amd64/" 
+	cp "$(shell basename $(CURDIR)).exe" "examples/appusers/terraform.d/plugins/windows_amd64/" 
+
 docker:
 	docker run --rm -it \
 		-v $(PWD):/go/src/github.com/Brightspace/terraform-provider-okta \
