@@ -85,8 +85,9 @@ func resourceAppUserAttachmentRead(d *schema.ResourceData, m interface{}) error 
 
 	member, err := client.GetAppMember(d.Get("app_id").(string), d.Id())
 	if err != nil {
+		log.Printf("[WARN] User (%s) in app (%s) not found, removing from state", d.Id(), d.Get("app_id").(string))
 		d.SetId("")
-		return err
+		return nil
 	}
 
 	log.Printf("[INFO] App %s user (%s) discovered", d.Get("app_id").(string), d.Id())
