@@ -85,6 +85,7 @@ func resourceAppUserAttachmentRead(d *schema.ResourceData, m interface{}) error 
 
 	member, err := client.GetAppMember(d.Get("app_id").(string), d.Id())
 	if err != nil {
+		d.SetId("")
 		return err
 	}
 
