@@ -214,7 +214,7 @@ func resourceAppUpdate(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 
-	provisionErr := client.SetProvisioningSettings(createdApplication.ID, awsKey, awsSecret)
+	provisionErr := client.SetProvisioningSettings(updatedApplication.ID, awsKey, awsSecret)
 	if provisionErr != nil {
 		return provisionErr
 	}
