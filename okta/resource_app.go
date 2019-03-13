@@ -188,6 +188,8 @@ func resourceAppRead(d *schema.ResourceData, m interface{}) error {
 
 func resourceAppUpdate(d *schema.ResourceData, m interface{}) error {
 	client := m.(OktaClient)
+	awsKey := d.Get("aws_okta_iam_user_id").(string)
+	awsSecret := d.Get("aws_okta_iam_user_secret").(string)
 
 	application := Application{
 		ID:         d.Id(),
@@ -210,6 +212,11 @@ func resourceAppUpdate(d *schema.ResourceData, m interface{}) error {
 	updatedApplication, err := client.UpdateApplication(application)
 	if err != nil {
 		return err
+	}
+
+	provisionErr := client.SetProvisioningSettings(createdApplication.ID, awsKey, awsSecret)
+	if provisionErr != nil {
+		return provisionErr
 	}
 
 	fmt.Printf("%+v\n", updatedApplication)
