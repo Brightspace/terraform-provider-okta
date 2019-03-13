@@ -3,7 +3,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/golang:1.9
+      - image: circleci/golang:1.12
     working_directory: /go/src/github.com/Brightspace/terraform-provider-okta
     steps:
       - checkout
@@ -18,7 +18,7 @@ jobs:
           command: go test -v -race
   package:
     docker:
-      - image: circleci/golang:1.9
+      - image: circleci/golang:1.12
     working_directory: /go/src/github.com/Brightspace/terraform-provider-okta
     steps:
       - checkout
