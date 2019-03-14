@@ -3,6 +3,7 @@ package okta
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/hashicorp/terraform/helper/schema"
 )
@@ -214,11 +215,19 @@ func resourceAppUpdate(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 
-	provisionErr := client.SetProvisioningSettings(updatedApplication.ID, awsKey, awsSecret)
-	if provisionErr != nil {
-		return provisionErr
+	err = client.RevokeProvisioningSettings(updatedApplication.ID)
+	if err != nil {
+		return err
 	}
 
+	time.Sleep(10 * time.Second)
+
+	err = client.SetProvisioningSettings(updatedApplication.ID, awsKey, awsSecret)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("[WARN] Credentials for okta updated with [%s]", awsKey)
 	fmt.Printf("%+v\n", updatedApplication)
 	d.SetId(updatedApplication.ID)
 
