@@ -3,6 +3,7 @@ package okta
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/hashicorp/terraform/helper/schema"
 )
@@ -94,6 +95,10 @@ func resourceApp() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+			"key_id": &schema.Schema{
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 			"saml_metadata_document": &schema.Schema{
 				Type:     schema.TypeString,
 				Computed: true,
@@ -152,6 +157,7 @@ func resourceAppCreate(d *schema.ResourceData, m interface{}) error {
 	fmt.Printf("%+v\n", createdApplication)
 	d.SetId(createdApplication.ID)
 	d.Set("saml_metadata_document", samlMetadataDocument)
+	d.Set("key_id", createdApplication.Credentials.Signing.KeyID)
 
 	return nil
 }
@@ -159,6 +165,7 @@ func resourceAppCreate(d *schema.ResourceData, m interface{}) error {
 func resourceAppRead(d *schema.ResourceData, m interface{}) error {
 	client := m.(OktaClient)
 	appID := d.Id()
+	keyId := d.Get("key_id").(string)
 
 	readApplication, applicationRemoved, err := client.ReadApplication(appID)
 	if err != nil {
@@ -171,6 +178,11 @@ func resourceAppRead(d *schema.ResourceData, m interface{}) error {
 		return nil
 	}
 
+	samlMetadataDocument, err := client.GetSAMLMetaData(appID, keyId)
+	if err != nil {
+		return err
+	}
+
 	d.Set("name", readApplication.Name)
 	d.Set("label", readApplication.Label)
 	d.Set("sign_on_mode", readApplication.SignOnMode)
@@ -181,6 +193,7 @@ func resourceAppRead(d *schema.ResourceData, m interface{}) error {
 	d.Set("identity_provider_arn", readApplication.Settings.App.IdentityProviderArn)
 	d.Set("session_duration", readApplication.Settings.App.SessionDuration)
 	d.Set("role_value_pattern", readApplication.Settings.App.RoleValuePattern)
+	d.Set("saml_metadata_document", samlMetadataDocument)
 
 	fmt.Printf("%+v\n", readApplication)
 	return nil
@@ -188,6 +201,8 @@ func resourceAppRead(d *schema.ResourceData, m interface{}) error {
 
 func resourceAppUpdate(d *schema.ResourceData, m interface{}) error {
 	client := m.(OktaClient)
+	awsKey := d.Get("aws_okta_iam_user_id").(string)
+	awsSecret := d.Get("aws_okta_iam_user_secret").(string)
 
 	application := Application{
 		ID:         d.Id(),
@@ -212,6 +227,19 @@ func resourceAppUpdate(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 
+	err = client.RevokeProvisioningSettings(updatedApplication.ID)
+	if err != nil {
+		return err
+	}
+
+	time.Sleep(10 * time.Second)
+
+	err = client.SetProvisioningSettings(updatedApplication.ID, awsKey, awsSecret)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("[WARN] Credentials for okta updated with [%s]", awsKey)
 	fmt.Printf("%+v\n", updatedApplication)
 	d.SetId(updatedApplication.ID)
 
