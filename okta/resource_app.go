@@ -95,10 +95,6 @@ func resourceApp() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			"key_id": &schema.Schema{
-				Type:     schema.TypeString,
-				Computed: true,
-			},
 			"saml_metadata_document": &schema.Schema{
 				Type:     schema.TypeString,
 				Computed: true,
@@ -157,7 +153,6 @@ func resourceAppCreate(d *schema.ResourceData, m interface{}) error {
 	fmt.Printf("%+v\n", createdApplication)
 	d.SetId(createdApplication.ID)
 	d.Set("saml_metadata_document", samlMetadataDocument)
-	d.Set("key_id", createdApplication.Credentials.Signing.KeyID)
 
 	return nil
 }
@@ -165,7 +160,6 @@ func resourceAppCreate(d *schema.ResourceData, m interface{}) error {
 func resourceAppRead(d *schema.ResourceData, m interface{}) error {
 	client := m.(OktaClient)
 	appID := d.Id()
-	keyId := d.Get("key_id").(string)
 
 	readApplication, applicationRemoved, err := client.ReadApplication(appID)
 	if err != nil {
@@ -178,7 +172,7 @@ func resourceAppRead(d *schema.ResourceData, m interface{}) error {
 		return nil
 	}
 
-	samlMetadataDocument, err := client.GetSAMLMetaData(appID, keyId)
+	samlMetadataDocument, err := client.GetSAMLMetaData(appID, readApplication.Credentials.Signing.KeyID)
 	if err != nil {
 		return err
 	}
