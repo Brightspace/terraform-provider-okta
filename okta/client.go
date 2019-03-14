@@ -197,8 +197,8 @@ func (o *OktaClient) UpdateApplication(application Application) (Application, er
 	return app, nil
 }
 
-func (o *OktaClient) ReadApplication(appID string) (Application, bool, error) {
-	var app Application
+func (o *OktaClient) ReadApplication(appID string) (IdentifiedApplication, bool, error) {
+	var app IdentifiedApplication
 	url := fmt.Sprintf("%s/api/v1/apps/%s", o.OktaURL, appID)
 
 	req, _ := http.NewRequest("GET", url, nil)
