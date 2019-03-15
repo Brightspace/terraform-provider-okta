@@ -789,7 +789,7 @@ func (o *OktaClient) SetProvisioningSettings(appID string, oktaAWSKey string, ok
 	}
 
 	// ---------------
-	oneUrl := fmt.Sprintf("%s/home/saasure/%s/1", o.OktaURL, o.OrgID)
+	oneUrl := fmt.Sprintf("%s/home/saasure/%s", o.OktaURL, o.OrgID)
 	req4, _ := http.NewRequest("GET", oneUrl, nil)
 	req4.Header.Set("Content-Type", "application/json")
 	req4.Header.Set("Accept", "application/json")
