@@ -10,7 +10,6 @@ func resourceAppUserAttachment() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceAppUserAttachmentCreate,
 		Read:   resourceAppUserAttachmentRead,
-		Update: resourceAppUserAttachmentUpdate,
 		Delete: resourceAppUserAttachmentDelete,
 
 		Schema: map[string]*schema.Schema{
@@ -58,24 +57,6 @@ func resourceAppUserAttachmentCreate(d *schema.ResourceData, m interface{}) erro
 	}
 
 	d.SetId(user_id)
-
-	return resourceAppUserAttachmentRead(d, m)
-}
-
-func resourceAppUserAttachmentUpdate(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
-	app_id := d.Get("app_id").(string)
-	role := d.Get("role").(string)
-	saml_roles := d.Get("saml_roles").([]interface{})
-	roles := make([]string, len(saml_roles))
-	for i, value := range saml_roles {
-		roles[i] = value.(string)
-	}
-
-	_, err := client.AddMemberToApp(app_id, d.Id(), role, roles)
-	if err != nil {
-		return err
-	}
 
 	return resourceAppUserAttachmentRead(d, m)
 }
