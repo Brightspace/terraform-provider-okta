@@ -104,7 +104,6 @@ func resourceAppUserAttachmentRead(d *schema.ResourceData, m interface{}) error 
 	return nil
 }
 
-
 func resourceAppUserAttachmentDelete(d *schema.ResourceData, m interface{}) error {
 	client := m.(OktaClient)
 
