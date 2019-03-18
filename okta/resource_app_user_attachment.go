@@ -65,6 +65,24 @@ func resourceAppUserAttachmentCreate(d *schema.ResourceData, m interface{}) erro
 	return resourceAppUserAttachmentRead(d, m)
 }
 
+func resourceAppUserAttachmentUpdate(d *schema.ResourceData, m interface{}) error {
+	client := m.(OktaClient)
+	app_id := d.Get("app_id").(string)
+	role := d.Get("role").(string)
+	saml_roles := d.Get("saml_roles").([]interface{})
+	roles := make([]string, len(saml_roles))
+	for i, value := range saml_roles {
+		roles[i] = value.(string)
+	}
+
+	_, err := client.AddMemberToApp(app_id, d.Id(), role, roles)
+	if err != nil {
+		return err
+	}
+
+	return resourceAppUserAttachmentRead(d, m)
+}
+
 func resourceAppUserAttachmentRead(d *schema.ResourceData, m interface{}) error {
 	client := m.(OktaClient)
 
@@ -86,23 +104,6 @@ func resourceAppUserAttachmentRead(d *schema.ResourceData, m interface{}) error 
 	return nil
 }
 
-func resourceAppUserAttachmentUpdate(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
-	app_id := d.Get("app_id").(string)
-	role := d.Get("role").(string)
-	saml_roles := d.Get("saml_roles").([]interface{})
-	roles := make([]string, len(saml_roles))
-	for i, value := range saml_roles {
-		roles[i] = value.(string)
-	}
-
-	_, err := client.AddMemberToApp(app_id, d.Id(), role, roles)
-	if err != nil {
-		return err
-	}
-
-	return resourceAppUserAttachmentRead(d, m)
-}
 
 func resourceAppUserAttachmentDelete(d *schema.ResourceData, m interface{}) error {
 	client := m.(OktaClient)
