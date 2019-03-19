@@ -16,14 +16,17 @@ func resourceAppUserAttachment() *schema.Resource {
 		Schema: map[string]*schema.Schema{
 			"role": &schema.Schema{
 				Type:     schema.TypeString,
+				ForceNew: true,
 				Required: true,
 			},
 			"user": &schema.Schema{
 				Type:     schema.TypeString,
+				ForceNew: true,
 				Required: true,
 			},
 			"app_id": &schema.Schema{
 				Type:     schema.TypeString,
+				ForceNew: true,
 				Required: true,
 			},
 			"saml_roles": &schema.Schema{
