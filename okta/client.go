@@ -367,8 +367,8 @@ func (o *OktaClient) AddMemberToApp(appId string, userId string, role string, ro
 
 	err = try.Do(func(ampt int) (bool, error) {
 		var err error
-		_, err = client.Do(req)
-		if err != nil {
+		resp, err := client.Do(req)
+		if err != nil || resp.StatusCode != 200 {
 			log.Printf("[DEBUG] retrying request: (Attempt: %d/%d, URL: %q)", ampt, o.RetryMaximum, err)
 			time.Sleep(30 * time.Second)
 		}
