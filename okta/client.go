@@ -35,6 +35,7 @@ type OktaClient struct {
 	UserName     string
 	Password     string
 	OrgID        string
+	RetryMaximum int
 }
 
 type OktaAuthResponse struct {
@@ -109,6 +110,7 @@ func NewClient(c *Config) OktaClient {
 		UserName:     c.UserName,
 		Password:     c.Password,
 		OrgID:        c.OrgID,
+		RetryMaximum: c.RetryMaximum,
 	}
 }
 
