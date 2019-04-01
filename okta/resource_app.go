@@ -226,7 +226,7 @@ func resourceAppUpdate(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(15 * time.Second)
 
 	err = client.SetProvisioningSettings(updatedApplication.ID, awsKey, awsSecret)
 	if err != nil {
