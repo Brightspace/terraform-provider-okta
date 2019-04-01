@@ -25,6 +25,7 @@ type Config struct {
 	UserName     string
 	Password     string
 	OrgID        string
+	RetryMaximum int
 }
 
 type OktaClient struct {
@@ -366,10 +367,10 @@ func (o *OktaClient) AddMemberToApp(appId string, userId string, role string, ro
 		var err error
 		_, err = client.Do(req)
 		if err != nil {
-			log.Printf("[DEBUG] retrying request: (Attempt: %d/%d, URL: %q)", ampt, evident.RetryMaximum, err)
+			log.Printf("[DEBUG] retrying request: (Attempt: %d/%d, URL: %q)", ampt, o.RetryMaximum, err)
 			time.Sleep(30 * time.Second)
 		}
-		return ampt < evident.RetryMaximum, err
+		return ampt < o.RetryMaximum, err
 	})
 	if err != nil {
 		return "", err
