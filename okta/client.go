@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"golang.org/x/net/html"
+	"github.com/matryer/try"
 )
 
 type Config struct {
@@ -24,6 +25,7 @@ type Config struct {
 	UserName     string
 	Password     string
 	OrgID        string
+	RetryMaximum int
 }
 
 type OktaClient struct {
@@ -33,6 +35,7 @@ type OktaClient struct {
 	UserName     string
 	Password     string
 	OrgID        string
+	RetryMaximum int
 }
 
 type OktaAuthResponse struct {
@@ -107,6 +110,7 @@ func NewClient(c *Config) OktaClient {
 		UserName:     c.UserName,
 		Password:     c.Password,
 		OrgID:        c.OrgID,
+		RetryMaximum: c.RetryMaximum,
 	}
 }
 
@@ -361,7 +365,15 @@ func (o *OktaClient) AddMemberToApp(appId string, userId string, role string, ro
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	_, err = client.Do(req)
+	err = try.Do(func(ampt int) (bool, error) {
+		var err error
+		_, err = client.Do(req)
+		if err != nil {
+			log.Printf("[DEBUG] retrying request: (Attempt: %d/%d, URL: %q)", ampt, o.RetryMaximum, err)
+			time.Sleep(30 * time.Second)
+		}
+		return ampt < o.RetryMaximum, err
+	})
 	if err != nil {
 		return "", err
 	}
