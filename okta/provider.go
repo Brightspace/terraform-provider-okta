@@ -65,7 +65,7 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 		UserName:     d.Get("username").(string),
 		Password:     d.Get("password").(string),
 		OrgID:        d.Get("org_id").(string),
-		RetryMaximum  15,
+		RetryMaximum: 15,
 	}
 
 	client := NewClient(&config)
