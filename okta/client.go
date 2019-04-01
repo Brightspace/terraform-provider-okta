@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"golang.org/x/net/html"
+	"github.com/matryer/try"
 )
 
 type Config struct {
@@ -361,7 +362,15 @@ func (o *OktaClient) AddMemberToApp(appId string, userId string, role string, ro
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	_, err = client.Do(req)
+	err = try.Do(func(ampt int) (bool, error) {
+		var err error
+		_, err = client.Do(req)
+		if err != nil {
+			log.Printf("[DEBUG] retrying request: (Attempt: %d/%d, URL: %q)", ampt, evident.RetryMaximum, err)
+			time.Sleep(30 * time.Second)
+		}
+		return ampt < evident.RetryMaximum, err
+	})
 	if err != nil {
 		return "", err
 	}
@@ -672,7 +681,7 @@ func (o *OktaClient) RevokeProvisioningSettings(appID string) error {
 	}
 
 	// ---------------
-	oneUrl := fmt.Sprintf("%s/home/saasure/%s/1", o.OktaURL, o.OrgID)
+	oneUrl := fmt.Sprintf("%s/home/saasure/%s", o.OktaURL, o.OrgID)
 	req4, _ := http.NewRequest("GET", oneUrl, nil)
 	req4.Header.Set("Content-Type", "application/json")
 	req4.Header.Set("Accept", "application/json")
