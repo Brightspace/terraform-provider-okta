@@ -298,7 +298,7 @@ func (o *OktaClient) GetSAMLMetaData(appID string, keyID string) (string, error)
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
 	var resp Response
-	err = try.Do(func(ampt int) (bool, error) {
+	err := try.Do(func(ampt int) (bool, error) {
 		var err error
 		resp, err = client.Do(req)
 		if err != nil || resp.StatusCode != 200 {
@@ -377,7 +377,7 @@ func (o *OktaClient) RemoveMemberFromApp(appId string, userId string) error {
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
 	var resp Response
-	err = try.Do(func(ampt int) (bool, error) {
+	err := try.Do(func(ampt int) (bool, error) {
 		var err error
 		resp, err = client.Do(req)
 		if err != nil || resp.StatusCode != 200 {
