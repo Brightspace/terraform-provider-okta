@@ -156,7 +156,7 @@ func (o *OktaClient) CreateApplication(application Application) (IdentifiedAppli
 
 		retry := ampt < o.RetryMaximum
 		if !retry && resp.StatusCode == 429 {
-			return retry, fmt.Errorf("Rate limit prevented removing member from application: %s", url)
+			return retry, fmt.Errorf("Rate limit prevented creating the application: %s", application.Name)
 		}
 
 		return retry, err
@@ -215,7 +215,7 @@ func (o *OktaClient) UpdateApplication(application Application) (Application, er
 
 		retry := ampt < o.RetryMaximum
 		if !retry && resp.StatusCode == 429 {
-			return retry, fmt.Errorf("Rate limit prevented removing member from application: %s", url)
+			return retry, fmt.Errorf("Rate limit prevented updating the application: %s", application.ID)
 		}
 
 		return retry, err
@@ -268,7 +268,7 @@ func (o *OktaClient) ReadApplication(appID string) (IdentifiedApplication, bool,
 
 		retry := ampt < o.RetryMaximum
 		if !retry && resp.StatusCode == 429 {
-			return retry, fmt.Errorf("Rate limit prevented removing member from application: %s", url)
+			return retry, fmt.Errorf("Rate limit prevented reading the application: %s", url)
 		}
 
 		return retry, err
@@ -314,7 +314,7 @@ func (o *OktaClient) GetSAMLMetaData(appID string, keyID string) (string, error)
 
 		retry := ampt < o.RetryMaximum
 		if !retry && resp.StatusCode == 429 {
-			return retry, fmt.Errorf("Rate limit prevented removing member from application: %s", url)
+			return retry, fmt.Errorf("Rate limit prevented from getting SAML metadata: %s", url)
 		}
 
 		return retry, err
@@ -681,7 +681,7 @@ func (o *OktaClient) GetUserIDByEmail(user string) (string, error) {
 
 		retry := ampt < o.RetryMaximum
 		if !retry && resp.StatusCode == 429 {
-			return retry, fmt.Errorf("Rate limit prevented adding member to application: %s", url)
+			return retry, fmt.Errorf("Rate limit prevented getting user id from email: %s", url)
 		}
 
 		return retry, err
