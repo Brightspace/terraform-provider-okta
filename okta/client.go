@@ -139,7 +139,7 @@ func (o *OktaClient) CreateApplication(application Application) (IdentifiedAppli
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	var resp Response
+	var resp *http.Response
 	err = try.Do(func(ampt int) (bool, error) {
 		var err error
 		resp, err = client.Do(req)
@@ -198,7 +198,7 @@ func (o *OktaClient) UpdateApplication(application Application) (Application, er
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	var resp Response
+	var resp *http.Response
 	err = try.Do(func(ampt int) (bool, error) {
 		var err error
 		resp, err = client.Do(req)
@@ -251,7 +251,7 @@ func (o *OktaClient) ReadApplication(appID string) (IdentifiedApplication, bool,
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	var resp Response
+	var resp *http.Response
 	err := try.Do(func(ampt int) (bool, error) {
 		var err error
 		resp, err = client.Do(req)
@@ -297,7 +297,7 @@ func (o *OktaClient) GetSAMLMetaData(appID string, keyID string) (string, error)
 	req.Header.Set("Accept", "application/xml")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	var resp Response
+	var resp *http.Response
 	err := try.Do(func(ampt int) (bool, error) {
 		var err error
 		resp, err = client.Do(req)
@@ -376,7 +376,7 @@ func (o *OktaClient) RemoveMemberFromApp(appId string, userId string) error {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	var resp Response
+	var resp *http.Response
 	err := try.Do(func(ampt int) (bool, error) {
 		var err error
 		resp, err = client.Do(req)
@@ -664,8 +664,8 @@ func (o *OktaClient) GetUserIDByEmail(user string) (string, error) {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	var resp Response
-	err = try.Do(func(ampt int) (bool, error) {
+	var resp *http.Response
+	err := try.Do(func(ampt int) (bool, error) {
 		var err error
 		resp, err = client.Do(req)
 		if err != nil || resp.StatusCode != 200 {
@@ -690,7 +690,7 @@ func (o *OktaClient) GetUserIDByEmail(user string) (string, error) {
 		return "", err
 	}
 
-	defer res.Body.Close()
+	defer resp.Body.Close()
 
 	err = json.NewDecoder(resp.Body).Decode(&oktaUser)
 	if err != nil {
