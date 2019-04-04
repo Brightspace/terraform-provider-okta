@@ -168,7 +168,7 @@ func (o *OktaClient) CreateApplication(application Application) (IdentifiedAppli
 
 	defer resp.Body.Close()
 
-	if res.StatusCode != 200 {
+	if resp.StatusCode != 200 {
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(resp.Body)
 		msg := buf.String()
@@ -252,7 +252,7 @@ func (o *OktaClient) ReadApplication(appID string) (IdentifiedApplication, bool,
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
 	var resp Response
-	err = try.Do(func(ampt int) (bool, error) {
+	err := try.Do(func(ampt int) (bool, error) {
 		var err error
 		resp, err = client.Do(req)
 		if err != nil || resp.StatusCode != 200 {
@@ -277,7 +277,7 @@ func (o *OktaClient) ReadApplication(appID string) (IdentifiedApplication, bool,
 		return app, false, err
 	}
 
-	if res.StatusCode == 404 {
+	if resp.StatusCode == 404 {
 		return app, true, nil
 	}
 
