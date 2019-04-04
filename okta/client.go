@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/net/html"
 	"github.com/matryer/try"
+	"golang.org/x/net/html"
 )
 
 type Config struct {
@@ -151,7 +151,7 @@ func (o *OktaClient) CreateApplication(application Application) (IdentifiedAppli
 			time.Sleep(45 * time.Second)
 		} else if resp.StatusCode != 200 {
 			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
-			time.Sleep(30 * time.Second)				
+			time.Sleep(30 * time.Second)
 		}
 
 		retry := ampt < o.RetryMaximum
@@ -210,7 +210,7 @@ func (o *OktaClient) UpdateApplication(application Application) (Application, er
 			time.Sleep(45 * time.Second)
 		} else if resp.StatusCode != 200 {
 			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
-			time.Sleep(30 * time.Second)				
+			time.Sleep(30 * time.Second)
 		}
 
 		retry := ampt < o.RetryMaximum
@@ -263,7 +263,7 @@ func (o *OktaClient) ReadApplication(appID string) (IdentifiedApplication, bool,
 			time.Sleep(45 * time.Second)
 		} else if resp.StatusCode != 200 {
 			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
-			time.Sleep(30 * time.Second)				
+			time.Sleep(30 * time.Second)
 		}
 
 		retry := ampt < o.RetryMaximum
@@ -309,7 +309,7 @@ func (o *OktaClient) GetSAMLMetaData(appID string, keyID string) (string, error)
 			time.Sleep(45 * time.Second)
 		} else if resp.StatusCode != 200 {
 			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
-			time.Sleep(30 * time.Second)				
+			time.Sleep(30 * time.Second)
 		}
 
 		retry := ampt < o.RetryMaximum
@@ -388,7 +388,7 @@ func (o *OktaClient) RemoveMemberFromApp(appId string, userId string) error {
 			time.Sleep(45 * time.Second)
 		} else if resp.StatusCode != 200 {
 			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
-			time.Sleep(30 * time.Second)				
+			time.Sleep(30 * time.Second)
 		}
 
 		retry := ampt < o.RetryMaximum
@@ -480,7 +480,7 @@ func (o *OktaClient) AddMemberToApp(appId string, userId string, role string, ro
 			time.Sleep(45 * time.Second)
 		} else if resp.StatusCode != 200 {
 			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
-			time.Sleep(30 * time.Second)				
+			time.Sleep(30 * time.Second)
 		}
 
 		retry := ampt < o.RetryMaximum
@@ -657,7 +657,7 @@ func (o *OktaClient) SyncUsersToGroup(groupID string, members []string) error {
 
 func (o *OktaClient) GetUserIDByEmail(user string) (string, error) {
 	var oktaUser []OktaUser
-	url := fmt.Sprintf("%s/api/v1/users?q=%s&limit=1", o.OktaURL, user)
+	url := fmt.Sprintf("%s/api/v1/users?q=%s", o.OktaURL, user)
 
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Content-Type", "application/json")
@@ -676,7 +676,7 @@ func (o *OktaClient) GetUserIDByEmail(user string) (string, error) {
 			time.Sleep(45 * time.Second)
 		} else if resp.StatusCode != 200 {
 			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
-			time.Sleep(30 * time.Second)				
+			time.Sleep(30 * time.Second)
 		}
 
 		retry := ampt < o.RetryMaximum
@@ -697,7 +697,13 @@ func (o *OktaClient) GetUserIDByEmail(user string) (string, error) {
 		return "", err
 	}
 
-	return oktaUser[0].ID, nil
+	for _, user := range oktaUser {
+		if strings.Contains(user.Profile.Login, "desire2learn.com") {
+			return oktaUser[0].ID, nil
+		}
+	}
+
+	return "", fmt.Errorf("Could not find user in desire2learn domain for email %s", user)
 }
 
 func (o *OktaClient) GetUsersInGroup(groupID string) ([]OktaUser, error) {
