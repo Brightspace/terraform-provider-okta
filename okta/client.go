@@ -139,23 +139,44 @@ func (o *OktaClient) CreateApplication(application Application) (IdentifiedAppli
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	res, err := client.Do(req)
+	var resp Response
+	err = try.Do(func(ampt int) (bool, error) {
+		var err error
+		resp, err = client.Do(req)
+		if err != nil || resp.StatusCode != 200 {
+			log.Printf("[DEBUG] (%d) retrying request: (Attempt: %d/%d, URL: %q)", resp.StatusCode, ampt, o.RetryMaximum, err)
+			time.Sleep(30 * time.Second)
+		} else if resp.StatusCode == 429 {
+			log.Printf("[DEBUG] Rate limit hit (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(45 * time.Second)
+		} else if resp.StatusCode != 200 {
+			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(30 * time.Second)				
+		}
+
+		retry := ampt < o.RetryMaximum
+		if !retry && resp.StatusCode == 429 {
+			return retry, fmt.Errorf("Rate limit prevented removing member from application: %s", url)
+		}
+
+		return retry, err
+	})
 
 	if err != nil {
 		return idApp, err
 	}
 
-	defer res.Body.Close()
+	defer resp.Body.Close()
 
 	if res.StatusCode != 200 {
 		buf := new(bytes.Buffer)
-		buf.ReadFrom(res.Body)
+		buf.ReadFrom(resp.Body)
 		msg := buf.String()
 
 		return idApp, fmt.Errorf("Error creating application in Okta: %s", msg)
 	}
 
-	err = json.NewDecoder(res.Body).Decode(&idApp)
+	err = json.NewDecoder(resp.Body).Decode(&idApp)
 	if err != nil {
 		return idApp, err
 	}
@@ -177,23 +198,43 @@ func (o *OktaClient) UpdateApplication(application Application) (Application, er
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	res, err := client.Do(req)
+	var resp Response
+	err = try.Do(func(ampt int) (bool, error) {
+		var err error
+		resp, err = client.Do(req)
+		if err != nil || resp.StatusCode != 200 {
+			log.Printf("[DEBUG] (%d) retrying request: (Attempt: %d/%d, URL: %q)", resp.StatusCode, ampt, o.RetryMaximum, err)
+			time.Sleep(30 * time.Second)
+		} else if resp.StatusCode == 429 {
+			log.Printf("[DEBUG] Rate limit hit (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(45 * time.Second)
+		} else if resp.StatusCode != 200 {
+			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(30 * time.Second)				
+		}
 
+		retry := ampt < o.RetryMaximum
+		if !retry && resp.StatusCode == 429 {
+			return retry, fmt.Errorf("Rate limit prevented removing member from application: %s", url)
+		}
+
+		return retry, err
+	})
 	if err != nil {
 		return app, err
 	}
 
-	defer res.Body.Close()
+	defer resp.Body.Close()
 
-	if res.StatusCode != 200 {
+	if resp.StatusCode != 200 {
 		buf := new(bytes.Buffer)
-		buf.ReadFrom(res.Body)
+		buf.ReadFrom(resp.Body)
 		msg := buf.String()
 
 		return app, fmt.Errorf("Error updating application in Okta: %s \nRequest Body: %s", msg, string(body))
 	}
 
-	err = json.NewDecoder(res.Body).Decode(&app)
+	err = json.NewDecoder(resp.Body).Decode(&app)
 	if err != nil {
 		return app, err
 	}
@@ -210,7 +251,28 @@ func (o *OktaClient) ReadApplication(appID string) (IdentifiedApplication, bool,
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	res, err := client.Do(req)
+	var resp Response
+	err = try.Do(func(ampt int) (bool, error) {
+		var err error
+		resp, err = client.Do(req)
+		if err != nil || resp.StatusCode != 200 {
+			log.Printf("[DEBUG] (%d) retrying request: (Attempt: %d/%d, URL: %q)", resp.StatusCode, ampt, o.RetryMaximum, err)
+			time.Sleep(30 * time.Second)
+		} else if resp.StatusCode == 429 {
+			log.Printf("[DEBUG] Rate limit hit (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(45 * time.Second)
+		} else if resp.StatusCode != 200 {
+			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(30 * time.Second)				
+		}
+
+		retry := ampt < o.RetryMaximum
+		if !retry && resp.StatusCode == 429 {
+			return retry, fmt.Errorf("Rate limit prevented removing member from application: %s", url)
+		}
+
+		return retry, err
+	})
 	if err != nil {
 		return app, false, err
 	}
@@ -219,7 +281,7 @@ func (o *OktaClient) ReadApplication(appID string) (IdentifiedApplication, bool,
 		return app, true, nil
 	}
 
-	err = json.NewDecoder(res.Body).Decode(&app)
+	err = json.NewDecoder(resp.Body).Decode(&app)
 	if err != nil {
 		return app, false, err
 	}
@@ -235,13 +297,34 @@ func (o *OktaClient) GetSAMLMetaData(appID string, keyID string) (string, error)
 	req.Header.Set("Accept", "application/xml")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	res, err := client.Do(req)
+	var resp Response
+	err = try.Do(func(ampt int) (bool, error) {
+		var err error
+		resp, err = client.Do(req)
+		if err != nil || resp.StatusCode != 200 {
+			log.Printf("[DEBUG] (%d) retrying request: (Attempt: %d/%d, URL: %q)", resp.StatusCode, ampt, o.RetryMaximum, err)
+			time.Sleep(30 * time.Second)
+		} else if resp.StatusCode == 429 {
+			log.Printf("[DEBUG] Rate limit hit (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(45 * time.Second)
+		} else if resp.StatusCode != 200 {
+			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(30 * time.Second)				
+		}
+
+		retry := ampt < o.RetryMaximum
+		if !retry && resp.StatusCode == 429 {
+			return retry, fmt.Errorf("Rate limit prevented removing member from application: %s", url)
+		}
+
+		return retry, err
+	})
 	if err != nil {
 		return "", err
 	}
 
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(res.Body)
+	buf.ReadFrom(resp.Body)
 	samlMetaData := buf.String()
 
 	return samlMetaData, nil
@@ -293,7 +376,28 @@ func (o *OktaClient) RemoveMemberFromApp(appId string, userId string) error {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	_, err := client.Do(req)
+	var resp Response
+	err = try.Do(func(ampt int) (bool, error) {
+		var err error
+		resp, err = client.Do(req)
+		if err != nil || resp.StatusCode != 200 {
+			log.Printf("[DEBUG] (%d) retrying request: (Attempt: %d/%d, URL: %q)", resp.StatusCode, ampt, o.RetryMaximum, err)
+			time.Sleep(30 * time.Second)
+		} else if resp.StatusCode == 429 {
+			log.Printf("[DEBUG] Rate limit hit (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(45 * time.Second)
+		} else if resp.StatusCode != 200 {
+			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(30 * time.Second)				
+		}
+
+		retry := ampt < o.RetryMaximum
+		if !retry && resp.StatusCode == 429 {
+			return retry, fmt.Errorf("Rate limit prevented removing member from application: %s", url)
+		}
+
+		return retry, err
+	})
 	if err != nil {
 		return err
 	}
@@ -371,8 +475,20 @@ func (o *OktaClient) AddMemberToApp(appId string, userId string, role string, ro
 		if err != nil || resp.StatusCode != 200 {
 			log.Printf("[DEBUG] (%d) retrying request: (Attempt: %d/%d, URL: %q)", resp.StatusCode, ampt, o.RetryMaximum, err)
 			time.Sleep(30 * time.Second)
+		} else if resp.StatusCode == 429 {
+			log.Printf("[DEBUG] Rate limit hit (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(45 * time.Second)
+		} else if resp.StatusCode != 200 {
+			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(30 * time.Second)				
 		}
-		return ampt < o.RetryMaximum, err
+
+		retry := ampt < o.RetryMaximum
+		if !retry && resp.StatusCode == 429 {
+			return retry, fmt.Errorf("Rate limit prevented adding member to application: %s", url)
+		}
+
+		return retry, err
 	})
 	if err != nil {
 		return "", err
@@ -548,14 +664,35 @@ func (o *OktaClient) GetUserIDByEmail(user string) (string, error) {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	res, err := client.Do(req)
+	var resp Response
+	err = try.Do(func(ampt int) (bool, error) {
+		var err error
+		resp, err = client.Do(req)
+		if err != nil || resp.StatusCode != 200 {
+			log.Printf("[DEBUG] (%d) retrying request: (Attempt: %d/%d, URL: %q)", resp.StatusCode, ampt, o.RetryMaximum, err)
+			time.Sleep(30 * time.Second)
+		} else if resp.StatusCode == 429 {
+			log.Printf("[DEBUG] Rate limit hit (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(45 * time.Second)
+		} else if resp.StatusCode != 200 {
+			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(30 * time.Second)				
+		}
+
+		retry := ampt < o.RetryMaximum
+		if !retry && resp.StatusCode == 429 {
+			return retry, fmt.Errorf("Rate limit prevented adding member to application: %s", url)
+		}
+
+		return retry, err
+	})
 	if err != nil {
 		return "", err
 	}
 
 	defer res.Body.Close()
 
-	err = json.NewDecoder(res.Body).Decode(&oktaUser)
+	err = json.NewDecoder(resp.Body).Decode(&oktaUser)
 	if err != nil {
 		return "", err
 	}
