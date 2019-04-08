@@ -434,9 +434,7 @@ func (o *OktaClient) DelayRateLimit(appID string) (error) {
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
 	err := try.Do(func(ampt int) (bool, error) {
-		var err error
-		
-		resp, err = client.Do(req)
+		resp, err := client.Do(req)
 		limit := resp.Header.Get("X-Rate-Limit-Limit").(int)
 		remaining := resp.Header.Get("X-Rate-Limit-Remaining").(int) * 100
 		ratio := remaining / limit
