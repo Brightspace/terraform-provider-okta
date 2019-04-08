@@ -425,6 +425,50 @@ func (o *OktaClient) GetUserIDByEmail(user string) (string, error) {
 	return "", fmt.Errorf("Could not find user in desire2learn domain for email %s", user)
 }
 
+func (o *OktaClient) DelayRateLimit(appID string) (error) {
+	url := fmt.Sprintf("%s/api/v1/apps/%s", o.OktaURL, appID)
+
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
+
+	err := try.Do(func(ampt int) (bool, error) {
+		var err error
+		
+		resp, err = client.Do(req)
+		limit := resp.Header.Get("X-Rate-Limit-Limit").(int)
+		remaining := resp.Header.Get("X-Rate-Limit-Remaining").(int) * 100
+		ratio := remaining / limit
+
+		if err != nil || resp.StatusCode != 200 {
+			log.Printf("[DEBUG] (%d) retrying request: (Attempt: %d/%d, URL: %q)", resp.StatusCode, ampt, o.RetryMaximum, err)
+			time.Sleep(30 * time.Second)
+		} else if resp.StatusCode == 429 {
+			log.Printf("[DEBUG] Rate limit hit (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(45 * time.Second)
+		} else if resp.StatusCode != 200 {
+			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(30 * time.Second)
+		} else if ratio < 50 {
+			log.Printf("[DEBUG] remaining retries to low, retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(55 * time.Second)
+		}
+
+		retry := ampt < o.RetryMaximum
+		if !retry && resp.StatusCode == 429 {
+			return retry, fmt.Errorf("Rate limit prevented the completion of the request: %s", url)
+		}
+
+		return retry, err
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (o *OktaClient) RevokeProvisioningSettings(appID string) error {
 	log.Println("[DEBUG] Running RevokeProvisioningSettings method...")
 	authBody := fmt.Sprintf(`{"username":"%s", "password":"%s"}`, o.UserName, o.Password)
