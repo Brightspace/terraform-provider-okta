@@ -436,6 +436,7 @@ func (o *OktaClient) DelayRateLimit(appID string) error {
 
 	err := try.Do(func(ampt int) (bool, error) {
 		resp, err := client.Do(req)
+		retry := ampt < o.RetryMaximum
 
 		if err != nil || resp.StatusCode != 200 {
 			log.Printf("[DEBUG] (%d) retrying request: (Attempt: %d/%d, URL: %q)", resp.StatusCode, ampt, o.RetryMaximum, err)
@@ -450,12 +451,12 @@ func (o *OktaClient) DelayRateLimit(appID string) error {
 
 		limit, err := strconv.Atoi(resp.Header.Get("X-Rate-Limit-Limit"))
 		if err != nil {
-			return err
+			return retry, err
 		}
 
 		remaining, err := strconv.Atoi(resp.Header.Get("X-Rate-Limit-Remaining"))
 		if err != nil {
-			return err
+			return retry, err
 		}
 
 		ratio := (remaining * 100) / limit
@@ -464,8 +465,7 @@ func (o *OktaClient) DelayRateLimit(appID string) error {
 			log.Printf("[DEBUG] remaining retries to low, retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
 			time.Sleep(55 * time.Second)
 		}
-
-		retry := ampt < o.RetryMaximum
+		
 		if !retry && resp.StatusCode == 429 {
 			return retry, fmt.Errorf("Rate limit prevented the completion of the request: %s", url)
 		}
