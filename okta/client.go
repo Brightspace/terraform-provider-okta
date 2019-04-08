@@ -486,7 +486,7 @@ func (o *OktaClient) RevokeProvisioningSettings(appID string) error {
 	cookieJar, _ := cookiejar.New(nil)
 	client.Jar = cookieJar
 
-	err := client.DelayRateLimit(appID)
+	err := o.DelayRateLimit(appID)
 	if err != nil {
 		return err
 	}
@@ -608,7 +608,7 @@ func (o *OktaClient) SetProvisioningSettings(appID string, oktaAWSKey string, ok
 	cookieJar, _ := cookiejar.New(nil)
 	client.Jar = cookieJar
 
-	err := client.DelayRateLimit(appID)
+	err := o.DelayRateLimit(appID)
 	if err != nil {
 		return err
 	}
