@@ -316,7 +316,7 @@ func (o *OktaClient) RemoveMemberFromApp(appId string, userId string) error {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	resp, err := o.sendRequest(url, req)
+	_, err := o.sendRequest(url, req)
 	if err != nil {
 		return err
 	}
