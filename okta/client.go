@@ -291,7 +291,7 @@ func (o *OktaClient) DeleteApplication(appID string) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	res, err := o.sendRequest(url, req)
+	res, err = o.sendRequest(url, req)
 	if err != nil {
 		return err
 	}
@@ -387,7 +387,7 @@ func (o *OktaClient) AddMemberToApp(appId string, userId string, role string, ro
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	_, err := o.sendRequest(url, req)
+	_, err = o.sendRequest(url, req)
 	if err != nil {
 		return "", err
 	}
