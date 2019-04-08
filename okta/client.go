@@ -476,6 +476,11 @@ func (o *OktaClient) RevokeProvisioningSettings(appID string) error {
 	cookieJar, _ := cookiejar.New(nil)
 	client.Jar = cookieJar
 
+	err := client.DelayRateLimit(appID)
+	if err != nil {
+		return err
+	}
+
 	authUrl := fmt.Sprintf(`%s/api/v1/authn`, o.OktaURL)
 	req, _ := http.NewRequest("POST", authUrl, strings.NewReader(authBody))
 	req.Header.Set("Content-Type", "application/json")
@@ -592,6 +597,11 @@ func (o *OktaClient) SetProvisioningSettings(appID string, oktaAWSKey string, ok
 
 	cookieJar, _ := cookiejar.New(nil)
 	client.Jar = cookieJar
+
+	err := client.DelayRateLimit(appID)
+	if err != nil {
+		return err
+	}
 
 	authUrl := fmt.Sprintf(`%s/api/v1/authn`, o.OktaURL)
 	req, _ := http.NewRequest("POST", authUrl, strings.NewReader(authBody))
