@@ -11,6 +11,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -425,7 +426,7 @@ func (o *OktaClient) GetUserIDByEmail(user string) (string, error) {
 	return "", fmt.Errorf("Could not find user in desire2learn domain for email %s", user)
 }
 
-func (o *OktaClient) DelayRateLimit(appID string) (error) {
+func (o *OktaClient) DelayRateLimit(appID string) error {
 	url := fmt.Sprintf("%s/api/v1/apps/%s", o.OktaURL, appID)
 
 	req, _ := http.NewRequest("GET", url, nil)
@@ -435,9 +436,6 @@ func (o *OktaClient) DelayRateLimit(appID string) (error) {
 
 	err := try.Do(func(ampt int) (bool, error) {
 		resp, err := client.Do(req)
-		limit := resp.Header.Get("X-Rate-Limit-Limit").(int)
-		remaining := resp.Header.Get("X-Rate-Limit-Remaining").(int) * 100
-		ratio := remaining / limit
 
 		if err != nil || resp.StatusCode != 200 {
 			log.Printf("[DEBUG] (%d) retrying request: (Attempt: %d/%d, URL: %q)", resp.StatusCode, ampt, o.RetryMaximum, err)
@@ -448,7 +446,21 @@ func (o *OktaClient) DelayRateLimit(appID string) (error) {
 		} else if resp.StatusCode != 200 {
 			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
 			time.Sleep(30 * time.Second)
-		} else if ratio < 50 {
+		}
+
+		limit, err := strconv.Atoi(resp.Header.Get("X-Rate-Limit-Limit"))
+		if err != nil {
+			return err
+		}
+
+		remaining, err := strconv.Atoi(resp.Header.Get("X-Rate-Limit-Remaining"))
+		if err != nil {
+			return err
+		}
+
+		ratio := (remaining * 100) / limit
+
+		if ratio < 50 {
 			log.Printf("[DEBUG] remaining retries to low, retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
 			time.Sleep(55 * time.Second)
 		}
