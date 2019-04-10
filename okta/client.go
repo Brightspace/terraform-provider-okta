@@ -11,11 +11,12 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
-	"golang.org/x/net/html"
 	"github.com/matryer/try"
+	"golang.org/x/net/html"
 )
 
 type Config struct {
@@ -124,6 +125,32 @@ func initHTTPClient() http.Client {
 	}
 }
 
+func (o *OktaClient) SendRequest(url string, req *http.Request) (*http.Response, error) {
+	var resp *http.Response
+	err := try.Do(func(ampt int) (bool, error) {
+		var err error
+		resp, err = client.Do(req)
+		if err != nil {
+			log.Printf("[DEBUG] (%d) retrying request: (Attempt: %d/%d, URL: %q)", resp.StatusCode, ampt, o.RetryMaximum, err)
+			time.Sleep(30 * time.Second)
+		} else if resp.StatusCode == 429 {
+			log.Printf("[DEBUG] Rate limit hit (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(45 * time.Second)
+		} else if resp.StatusCode != 200 && resp.StatusCode != 404 {
+			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(30 * time.Second)
+		}
+
+		retry := ampt < o.RetryMaximum
+		if !retry && resp.StatusCode == 429 {
+			return retry, fmt.Errorf("Rate limit prevented the completion of the request: %s", url)
+		}
+
+		return retry, err
+	})
+	return resp, err
+}
+
 func (o *OktaClient) CreateApplication(application Application) (IdentifiedApplication, error) {
 	var idApp IdentifiedApplication
 
@@ -139,23 +166,22 @@ func (o *OktaClient) CreateApplication(application Application) (IdentifiedAppli
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	res, err := client.Do(req)
-
+	resp, err := o.SendRequest(url, req)
 	if err != nil {
 		return idApp, err
 	}
 
-	defer res.Body.Close()
+	defer resp.Body.Close()
 
-	if res.StatusCode != 200 {
+	if resp.StatusCode != 200 {
 		buf := new(bytes.Buffer)
-		buf.ReadFrom(res.Body)
+		buf.ReadFrom(resp.Body)
 		msg := buf.String()
 
 		return idApp, fmt.Errorf("Error creating application in Okta: %s", msg)
 	}
 
-	err = json.NewDecoder(res.Body).Decode(&idApp)
+	err = json.NewDecoder(resp.Body).Decode(&idApp)
 	if err != nil {
 		return idApp, err
 	}
@@ -177,23 +203,22 @@ func (o *OktaClient) UpdateApplication(application Application) (Application, er
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	res, err := client.Do(req)
-
+	resp, err := o.SendRequest(url, req)
 	if err != nil {
 		return app, err
 	}
 
-	defer res.Body.Close()
+	defer resp.Body.Close()
 
-	if res.StatusCode != 200 {
+	if resp.StatusCode != 200 {
 		buf := new(bytes.Buffer)
-		buf.ReadFrom(res.Body)
+		buf.ReadFrom(resp.Body)
 		msg := buf.String()
 
 		return app, fmt.Errorf("Error updating application in Okta: %s \nRequest Body: %s", msg, string(body))
 	}
 
-	err = json.NewDecoder(res.Body).Decode(&app)
+	err = json.NewDecoder(resp.Body).Decode(&app)
 	if err != nil {
 		return app, err
 	}
@@ -210,16 +235,16 @@ func (o *OktaClient) ReadApplication(appID string) (IdentifiedApplication, bool,
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	res, err := client.Do(req)
+	resp, err := o.SendRequest(url, req)
 	if err != nil {
 		return app, false, err
 	}
 
-	if res.StatusCode == 404 {
+	if resp.StatusCode == 404 {
 		return app, true, nil
 	}
 
-	err = json.NewDecoder(res.Body).Decode(&app)
+	err = json.NewDecoder(resp.Body).Decode(&app)
 	if err != nil {
 		return app, false, err
 	}
@@ -235,13 +260,13 @@ func (o *OktaClient) GetSAMLMetaData(appID string, keyID string) (string, error)
 	req.Header.Set("Accept", "application/xml")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	res, err := client.Do(req)
+	resp, err := o.SendRequest(url, req)
 	if err != nil {
 		return "", err
 	}
 
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(res.Body)
+	buf.ReadFrom(resp.Body)
 	samlMetaData := buf.String()
 
 	return samlMetaData, nil
@@ -255,8 +280,7 @@ func (o *OktaClient) DeleteApplication(appID string) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	res, err := client.Do(req)
-
+	res, err := o.SendRequest(url, req)
 	if err != nil {
 		return err
 	}
@@ -268,8 +292,7 @@ func (o *OktaClient) DeleteApplication(appID string) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	res, err = client.Do(req)
-
+	res, err = o.SendRequest(url, req)
 	if err != nil {
 		return err
 	}
@@ -293,7 +316,7 @@ func (o *OktaClient) RemoveMemberFromApp(appId string, userId string) error {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	_, err := client.Do(req)
+	_, err := o.SendRequest(url, req)
 	if err != nil {
 		return err
 	}
@@ -303,23 +326,26 @@ func (o *OktaClient) RemoveMemberFromApp(appId string, userId string) error {
 
 func (o *OktaClient) GetAppMember(appId string, userId string) (OktaUser, error) {
 	var user OktaUser
-	members, err := o.ListAppMembers(appId)
+	url := fmt.Sprintf("%s/api/v1/apps/%s/users/%s", o.OktaURL, appId, userId)
+
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
+
+	res, err := o.SendRequest(url, req)
 	if err != nil {
 		return user, err
 	}
 
-	if len(members) == 0 {
-		return user, nil
+	defer res.Body.Close()
+
+	err = json.NewDecoder(res.Body).Decode(&user)
+	if err != nil {
+		return user, err
 	}
 
-	for _, member := range members {
-		if member.ID == userId {
-			user = member
-			return user, nil
-		}
-	}
-
-	return user, fmt.Errorf("User %s is not assigned to app %s", userId, appId)
+	return user, nil
 }
 
 func (o *OktaClient) ListAppMembers(appId string) ([]OktaUser, error) {
@@ -331,7 +357,7 @@ func (o *OktaClient) ListAppMembers(appId string) ([]OktaUser, error) {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	res, err := client.Do(req)
+	res, err := o.SendRequest(url, req)
 	if err != nil {
 		return oktaUsers, err
 	}
@@ -365,15 +391,7 @@ func (o *OktaClient) AddMemberToApp(appId string, userId string, role string, ro
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	err = try.Do(func(ampt int) (bool, error) {
-		var err error
-		resp, err := client.Do(req)
-		if err != nil || resp.StatusCode != 200 {
-			log.Printf("[DEBUG] (%d) retrying request: (Attempt: %d/%d, URL: %q)", resp.StatusCode, ampt, o.RetryMaximum, err)
-			time.Sleep(30 * time.Second)
-		}
-		return ampt < o.RetryMaximum, err
-	})
+	_, err = o.SendRequest(url, req)
 	if err != nil {
 		return "", err
 	}
@@ -381,252 +399,84 @@ func (o *OktaClient) AddMemberToApp(appId string, userId string, role string, ro
 	return "", nil
 }
 
-func (o *OktaClient) CreateGroup(groupName string, groupDescription string) (string, error) {
-	var groupInput OktaGroup
-	var groupOutput OktaGroup
-	groupInput.Profile.Name = groupName
-	groupInput.Profile.Description = groupDescription
-	url := fmt.Sprintf("%s/api/v1/groups", o.OktaURL)
-
-	body, err := json.Marshal(groupInput)
-	if err != nil {
-		return "", err
-	}
-
-	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
-
-	res, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-
-	defer res.Body.Close()
-
-	err = json.NewDecoder(res.Body).Decode(&groupOutput)
-	if err != nil {
-		return "", err
-	}
-
-	return groupOutput.ID, nil
-}
-
-func (o *OktaClient) UpdateGroup(groupID string, groupName string, groupDescription string) error {
-	group := OktaGroup{
-		Profile: OktaGroupProfile{
-			Name:        groupName,
-			Description: groupDescription,
-		},
-	}
-	url := fmt.Sprintf("%s/api/v1/groups/%s", o.OktaURL, groupID)
-
-	body, err := json.Marshal(group)
-	if err != nil {
-		return err
-	}
-
-	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
-
-	_, err2 := client.Do(req)
-	if err2 != nil {
-		return err2
-	}
-
-	return nil
-}
-
-func (o *OktaClient) DeleteGroup(groupID string) error {
-	url := fmt.Sprintf("%s/api/v1/groups/%s", o.OktaURL, groupID)
-
-	req, _ := http.NewRequest("DELETE", url, nil)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
-
-	_, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (o *OktaClient) GetGroup(groupID string) (OktaGroup, []OktaUser, bool, error) {
-	var groupOutput OktaGroup
-	url := fmt.Sprintf("%s/api/v1/groups/%s", o.OktaURL, groupID)
-
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
-
-	res, err := client.Do(req)
-	if err != nil {
-		return groupOutput, nil, false, err
-	}
-
-	defer res.Body.Close()
-
-	if res.StatusCode == 404 {
-		return groupOutput, nil, true, nil
-	}
-
-	err = json.NewDecoder(res.Body).Decode(&groupOutput)
-	if err != nil {
-		return groupOutput, nil, false, err
-	}
-
-	groupMembers, err := o.GetUsersInGroup(groupID)
-	if err != nil {
-		return groupOutput, nil, false, err
-	}
-
-	return groupOutput, groupMembers, false, nil
-}
-
-func (o *OktaClient) AddMemberToGroup(groupID string, userID string) error {
-	url := fmt.Sprintf("%s/api/v1/groups/%s/users/%s", o.OktaURL, groupID, userID)
-
-	req, _ := http.NewRequest("PUT", url, nil)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
-
-	_, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (o *OktaClient) SyncUsersToGroup(groupID string, members []string) error {
-	newMembers := make(map[string]string)
-	for _, member := range members {
-		memberID, err := o.GetUserIDByEmail(member)
-		if err != nil {
-			return err
-		}
-		newMembers[memberID] = member
-	}
-
-	groupMembers, err := o.GetUsersInGroup(groupID)
-	if err != nil {
-		return err
-	}
-
-	for _, groupMember := range groupMembers {
-		if newMembers[groupMember.ID] == "" {
-			err := o.RemoveMemberFromGroup(groupID, groupMember.ID)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	for newMemberID := range newMembers {
-		err := o.AddMemberToGroup(groupID, newMemberID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (o *OktaClient) GetUserIDByEmail(user string) (string, error) {
 	var oktaUser []OktaUser
-	url := fmt.Sprintf("%s/api/v1/users?q=%s&limit=1", o.OktaURL, user)
+	url := fmt.Sprintf("%s/api/v1/users?q=%s", o.OktaURL, user)
 
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	res, err := client.Do(req)
+	resp, err := o.SendRequest(url, req)
 	if err != nil {
 		return "", err
 	}
 
-	defer res.Body.Close()
+	defer resp.Body.Close()
 
-	err = json.NewDecoder(res.Body).Decode(&oktaUser)
+	err = json.NewDecoder(resp.Body).Decode(&oktaUser)
 	if err != nil {
 		return "", err
 	}
 
-	return oktaUser[0].ID, nil
+	for _, user := range oktaUser {
+		if strings.Contains(user.Profile.Login, "desire2learn.com") {
+			return oktaUser[0].ID, nil
+		}
+	}
+
+	return "", fmt.Errorf("Could not find user in desire2learn domain for email %s", user)
 }
 
-func (o *OktaClient) GetUsersInGroup(groupID string) ([]OktaUser, error) {
-	oktaUsers := make([]OktaUser, 0)
-	url := fmt.Sprintf("%s/api/v1/groups/%s/users", o.OktaURL, groupID)
+func (o *OktaClient) DelayRateLimit(appID string) error {
+	url := fmt.Sprintf("%s/api/v1/apps/%s", o.OktaURL, appID)
 
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	res, err := client.Do(req)
-	if err != nil {
-		return oktaUsers, err
-	}
+	err := try.Do(func(ampt int) (bool, error) {
+		resp, err := client.Do(req)
+		retry := ampt < o.RetryMaximum
 
-	defer res.Body.Close()
+		if err != nil || resp.StatusCode != 200 {
+			log.Printf("[DEBUG] (%d) retrying request: (Attempt: %d/%d, URL: %q)", resp.StatusCode, ampt, o.RetryMaximum, err)
+			time.Sleep(30 * time.Second)
+		} else if resp.StatusCode == 429 {
+			log.Printf("[DEBUG] Rate limit hit (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(45 * time.Second)
+		} else if resp.StatusCode != 200 {
+			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(30 * time.Second)
+		}
 
-	err = json.NewDecoder(res.Body).Decode(&oktaUsers)
-	if err != nil {
-		return oktaUsers, err
-	}
+		limit, err := strconv.Atoi(resp.Header.Get("X-Rate-Limit-Limit"))
+		if err != nil {
+			return retry, err
+		}
 
-	return oktaUsers, nil
-}
+		remaining, err := strconv.Atoi(resp.Header.Get("X-Rate-Limit-Remaining"))
+		if err != nil {
+			return retry, err
+		}
 
-func (o *OktaClient) RemoveMemberFromGroup(groupID string, userID string) error {
-	url := fmt.Sprintf("%s/api/v1/groups/%s/users/%s", o.OktaURL, groupID, userID)
+		ratio := (remaining * 100) / limit
 
-	req, _ := http.NewRequest("DELETE", url, nil)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
+		if ratio < 50 {
+			log.Printf("[DEBUG] remaining retries to low, retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			time.Sleep(55 * time.Second)
+		}
 
-	_, err := client.Do(req)
-	if err != nil {
-		return err
-	}
+		if !retry && resp.StatusCode == 429 {
+			return retry, fmt.Errorf("Rate limit prevented the completion of the request: %s", url)
+		}
 
-	return nil
-}
-
-func (o *OktaClient) AssignGroupToApp(appID string, groupID string, samlRole string) error {
-	url := fmt.Sprintf("%s/api/v1/apps/%s/groups/%s", o.OktaURL, appID, groupID)
-
-	samlGroup := OktaGroupSaml{
-		ID: groupID,
-		Profile: OktaGroupProfileSaml{
-			Role:      samlRole,
-			SamlRoles: []string{samlRole},
-		},
-	}
-
-	body, err := json.Marshal(samlGroup)
+		return retry, err
+	})
 	if err != nil {
 		return err
-	}
-
-	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
-
-	_, err2 := client.Do(req)
-	if err2 != nil {
-		return err2
 	}
 
 	return nil
@@ -638,6 +488,11 @@ func (o *OktaClient) RevokeProvisioningSettings(appID string) error {
 
 	cookieJar, _ := cookiejar.New(nil)
 	client.Jar = cookieJar
+
+	err := o.DelayRateLimit(appID)
+	if err != nil {
+		return err
+	}
 
 	authUrl := fmt.Sprintf(`%s/api/v1/authn`, o.OktaURL)
 	req, _ := http.NewRequest("POST", authUrl, strings.NewReader(authBody))
@@ -755,6 +610,11 @@ func (o *OktaClient) SetProvisioningSettings(appID string, oktaAWSKey string, ok
 
 	cookieJar, _ := cookiejar.New(nil)
 	client.Jar = cookieJar
+
+	err := o.DelayRateLimit(appID)
+	if err != nil {
+		return err
+	}
 
 	authUrl := fmt.Sprintf(`%s/api/v1/authn`, o.OktaURL)
 	req, _ := http.NewRequest("POST", authUrl, strings.NewReader(authBody))
