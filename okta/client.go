@@ -422,7 +422,7 @@ func (o *OktaClient) GetUserIDByEmail(user string) (string, error) {
 
 	for _, user := range oktaUser {
 		if strings.Contains(user.Profile.Login, "desire2learn.com") {
-			return oktaUser[0].ID, nil
+			return user.ID, nil
 		}
 	}
 
