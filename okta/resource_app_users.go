@@ -157,6 +157,21 @@ func convertToStrings(d *schema.ResourceData, property string) []string {
 	return result
 }
 
+func getRoleMappings(d *schema.ResourceData) map[string]string {
+	mapping := map[string]string{
+		d.Get("role_owner").(string):        "user_owner",
+		d.Get("role_user").(string):         "user_user",
+		d.Get("role_readonly").(string):     "user_readonly",
+		d.Get("role_finance").(string):      "user_finance",
+		d.Get("role_dashboard").(string):    "user_dashboard",
+		d.Get("role_dns").(string):          "user_dns",
+		d.Get("role_dns_admin").(string):    "user_dns_admin",
+		d.Get("role_athena").(string):       "user_athena",
+		d.Get("role_athena_admin").(string): "user_athena_admin",
+	}
+	return mapping
+}
+
 func composeRoleMappings(d *schema.ResourceData) map[string][]string {
 	mapping := map[string][]string{
 		d.Get("role_owner").(string):        convertToStrings(d, "user_owner"),
@@ -173,6 +188,10 @@ func composeRoleMappings(d *schema.ResourceData) map[string][]string {
 }
 
 func arraysEqual(x []string, y []string) bool {
+	if len(x) != len(y) {
+		return false
+	}
+
 	xmap := make(map[string]int)
 	ymap := make(map[string]int)
 
@@ -188,6 +207,7 @@ func arraysEqual(x []string, y []string) bool {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -231,29 +251,28 @@ func resourceAppUsersUpdate(d *schema.ResourceData, m interface{}) error {
 
 	role_mapping := composeRoleMappings(d)
 	saml_mapping := composeSamlMapping(role_mapping)
-	var ids []string
+	ids := make(map[string]bool)
 
 	for user, roles := range saml_mapping {
 		user_id, err := client.GetUserIDByEmail(user)
 		if err != nil {
 			return err
 		}
+		log.Printf("[INFO] User (%s) found as %s to roles %s", user, user_id, roles)
+		ids[user_id] = true
 
-		ids = append(ids, user_id)
-
-		update := false
-
+		update := true
 		member, err := client.GetAppMember(app_id, user_id)
-		if err != nil {
-			log.Printf("[WARN] User (%s) in app (%s) not found, removing from state", d.Id(), app_id)
+		if err != nil || member.ID == "" {
+			log.Printf("[WARN] User (%s) in app (%s) not found, re-adding", user, app_id)
 			update = true
-		}
-
-		if arraysEqual(member.Profile.SamlRoles, roles) {
+		} else if arraysEqual(roles, member.Profile.SamlRoles) {
+			log.Printf("[INFO] User (%s) in app (%s) matches roles of %s", user, app_id, member.Profile.SamlRoles)
 			update = false
 		}
 
 		if update {
+			log.Printf("[WARN] Updating user (%s) in app (%s) to fit roles", user, app_id)
 			_, err := client.AddMemberToApp(app_id, user_id, role, roles)
 			if err != nil {
 				return err
@@ -267,11 +286,12 @@ func resourceAppUsersUpdate(d *schema.ResourceData, m interface{}) error {
 	}
 
 	for _, member := range members {
-		if _, exists := saml_mapping[member.Profile.Email]; !exists {
+		if _, exists := ids[member.ID]; exists {
 			continue
 		}
 
-		err := client.RemoveMemberFromApp(d.Get("app_id").(string), member.ID)
+		log.Printf("[WARN] User (%s) in app (%s) not found in list, removing", member.Profile.Email, app_id)
+		err := client.RemoveMemberFromApp(app_id, member.ID)
 		if err != nil {
 			return err
 		}
@@ -283,40 +303,40 @@ func resourceAppUsersUpdate(d *schema.ResourceData, m interface{}) error {
 func resourceAppUsersRead(d *schema.ResourceData, m interface{}) error {
 	client := m.(OktaClient)
 	app_id := d.Get("app_id").(string)
-	role_mapping := composeRoleMappings(d)
-	saml_mapping := composeSamlMapping(role_mapping)
+	samlToUser := getRoleMappings(d)
 
 	members, err := client.ListAppMembers(app_id)
 	if err != nil {
 		return err
 	}
 
-	var ids []string
-	for user, roles := range saml_mapping {
-		user_id, err := client.GetUserIDByEmail(user)
+	existing := make(map[string][]string)
+	for saml, _ := range samlToUser {
+		existing[saml] = []string{}
+	}
+
+	for _, member := range members {
+		log.Printf("[INFO] Reading user (%s) on app %s", member.ID, app_id)
+		user, err := client.GetAppMember(app_id, member.ID)
 		if err != nil {
+			log.Printf("[ERR] Failed to read user (%s) from app %s", member.ID, app_id)
 			return err
 		}
 
-		for _, member := range members {
-			if !strings.EqualFold(user, member.Profile.Email) {
-				continue
-			}
+		log.Printf("[INFO] Reading user (%s) with roles: %s", member.ID, user.Profile.SamlRoles)
+		for _, saml := range user.Profile.SamlRoles {
+			user := user.Profile.Email
+			log.Printf("[INFO] Identifying user (%s) on for role %s", user, saml)
 
-			if !arraysEqual(roles, member.Profile.SamlRoles) {
-				log.Printf("[WARN] User (%s) in app (%s) does not have all SAML roles", user, app_id)
-				continue
-			}
-
-			ids = append(ids, member.ID)
-		}
-
-		if !strings.Contains(d.Id(), user_id) {
-			log.Printf("[WARN] User (%s) in app (%s) not found, removing from state", user, app_id)
+			existing[saml] = append(existing[saml], user)
 		}
 	}
 
-	d.SetId(composeResourceId(ids))
+	for saml, users := range existing {
+		out_users := samlToUser[saml]
+		log.Printf("[INFO] Setting (%s) role %s to: %s", out_users, saml, users)
+		d.Set(out_users, users)
+	}
 
 	return nil
 }
@@ -331,7 +351,7 @@ func resourceAppUsersDelete(d *schema.ResourceData, m interface{}) error {
 	}
 
 	for _, member := range members {
-		err := client.RemoveMemberFromApp(d.Get("app_id").(string), member.ID)
+		err := client.RemoveMemberFromApp(app_id, member.ID)
 		if err != nil {
 			return err
 		}
