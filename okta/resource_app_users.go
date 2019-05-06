@@ -327,7 +327,7 @@ func resourceAppUsersRead(d *schema.ResourceData, m interface{}) error {
 
 	for saml, users := range existing {
 		out_users := samlToUser[saml]
-		sort.strings(users)
+		sort.Strings(users)
 		log.Printf("[INFO] Setting (%s) role %s to: %s", out_users, saml, users)
 		d.Set(out_users, users)
 	}
