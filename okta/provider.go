@@ -51,6 +51,7 @@ func Provider() terraform.ResourceProvider {
 		ResourcesMap: map[string]*schema.Resource{
 			"okta_app":             resourceApp(),
 			"okta_user_attachment": resourceAppUserAttachment(),
+			"okta_app_users":       resourceAppUsers(),
 		},
 		ConfigureFunc: configureProvider,
 	}

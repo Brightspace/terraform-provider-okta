@@ -133,10 +133,15 @@ func (o *OktaClient) SendRequest(url string, req *http.Request) (*http.Response,
 		if err != nil {
 			log.Printf("[DEBUG] (%d) retrying request: (Attempt: %d/%d, URL: %q)", resp.StatusCode, ampt, o.RetryMaximum, err)
 			time.Sleep(30 * time.Second)
+		} else if resp.StatusCode == 200 || resp.StatusCode == 204 {
+			return false, nil
 		} else if resp.StatusCode == 429 {
 			log.Printf("[DEBUG] Rate limit hit (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
 			time.Sleep(45 * time.Second)
-		} else if resp.StatusCode != 200 && resp.StatusCode != 404 {
+		} else if resp.StatusCode == 404 {
+			log.Printf("[DEBUG] Resource not found (%d): (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
+			return false, nil
+		} else if resp.StatusCode != 200 {
 			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
 			time.Sleep(30 * time.Second)
 		}
@@ -336,6 +341,10 @@ func (o *OktaClient) GetAppMember(appId string, userId string) (OktaUser, error)
 	res, err := o.SendRequest(url, req)
 	if err != nil {
 		return user, err
+	}
+
+	if res.StatusCode == 404 {
+		return user, nil
 	}
 
 	defer res.Body.Close()
