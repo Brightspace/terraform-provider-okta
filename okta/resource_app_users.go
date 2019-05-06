@@ -1,11 +1,8 @@
 package okta
 
 import (
-	"log"
-	"sort"
-	"strings"
-
 	"github.com/hashicorp/terraform/helper/schema"
+	"log"
 )
 
 func resourceAppUsers() *schema.Resource {
