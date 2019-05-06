@@ -211,11 +211,6 @@ func arraysEqual(x []string, y []string) bool {
 	return true
 }
 
-func composeResourceId(users []string) string {
-	sort.Strings(users)
-	return strings.Join(users, "+")
-}
-
 func resourceAppUsersCreate(d *schema.ResourceData, m interface{}) error {
 	client := m.(OktaClient)
 	app_id := d.Get("app_id").(string)
@@ -239,7 +234,7 @@ func resourceAppUsersCreate(d *schema.ResourceData, m interface{}) error {
 		ids = append(ids, user_id)
 	}
 
-	d.SetId(composeResourceId(ids))
+	d.SetId(app_id)
 
 	return resourceAppUsersRead(d, m)
 }
