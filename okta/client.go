@@ -265,8 +265,8 @@ func (o *OktaClient) GetSAMLMetaData(appID string, keyID string) (string, error)
 	req.Header.Set("Accept", "application/xml")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	rate_guard := true
-	for rate_guard {
+	rate_guard := 10
+	for counter > 0 {
 		resp, err := o.SendRequest(url, req)
 		if err != nil {
 			return "", err
@@ -280,10 +280,11 @@ func (o *OktaClient) GetSAMLMetaData(appID string, keyID string) (string, error)
 		// Rate limit workaround: Returns rate limit error in SAML
 		// rather than as status code
 		if (strings.contains(samlMetaData, "E0000047")) {
+			rate_guard = rate_guard - 1
 			continue
 		}
 
-		rate_guard = false
+		rate_guard = -1
 		return samlMetaData, nil
 	}
 	
