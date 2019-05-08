@@ -79,6 +79,18 @@ func resourceAppUsers() *schema.Resource {
 				},
 				Required: true,
 			},
+			//storage
+			"role_storage": &schema.Schema{
+				Type:     schema.TypeString,
+				Required: true,
+			},
+			"user_storage": &schema.Schema{
+				Type: schema.TypeList,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Required: true,
+			},
 			//dns
 			"role_dns": &schema.Schema{
 				Type:     schema.TypeString,
@@ -162,6 +174,7 @@ func getRoleMappings(d *schema.ResourceData) map[string]string {
 		d.Get("role_readonly").(string):     "user_readonly",
 		d.Get("role_finance").(string):      "user_finance",
 		d.Get("role_dashboard").(string):    "user_dashboard",
+		d.Get("role_storage").(string):      "user_storage",
 		d.Get("role_dns").(string):          "user_dns",
 		d.Get("role_dns_admin").(string):    "user_dns_admin",
 		d.Get("role_athena").(string):       "user_athena",
@@ -177,6 +190,7 @@ func composeRoleMappings(d *schema.ResourceData) map[string][]string {
 		d.Get("role_readonly").(string):     convertToStrings(d, "user_readonly"),
 		d.Get("role_finance").(string):      convertToStrings(d, "user_finance"),
 		d.Get("role_dashboard").(string):    convertToStrings(d, "user_dashboard"),
+		d.Get("role_storage").(string):      convertToStrings(d, "user_storage"),
 		d.Get("role_dns").(string):          convertToStrings(d, "user_dns"),
 		d.Get("role_dns_admin").(string):    convertToStrings(d, "user_dns_admin"),
 		d.Get("role_athena").(string):       convertToStrings(d, "user_athena"),
