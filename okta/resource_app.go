@@ -145,6 +145,10 @@ func resourceAppCreate(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 
+	if samlMetadataDocument == nil {
+		return fmt.Errorf("Request for SAML returned nothing from app %s", createdApplication.ID)
+	}
+
 	provisionErr := client.SetProvisioningSettings(createdApplication.ID, awsKey, awsSecret)
 	if provisionErr != nil {
 		return provisionErr

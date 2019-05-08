@@ -266,7 +266,7 @@ func (o *OktaClient) GetSAMLMetaData(appID string, keyID string) (string, error)
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
 	rate_guard := 10
-	for counter > 0 {
+	for rate_guard > 0 {
 		resp, err := o.SendRequest(url, req)
 		if err != nil {
 			return "", err
@@ -279,7 +279,7 @@ func (o *OktaClient) GetSAMLMetaData(appID string, keyID string) (string, error)
 		// WORKAROUND:
 		// Rate limit workaround: Returns rate limit error in SAML
 		// rather than as status code
-		if (strings.contains(samlMetaData, "E0000047")) {
+		if (strings.Contains(samlMetaData, "E0000047")) {
 			rate_guard = rate_guard - 1
 			continue
 		}
@@ -287,7 +287,8 @@ func (o *OktaClient) GetSAMLMetaData(appID string, keyID string) (string, error)
 		rate_guard = -1
 		return samlMetaData, nil
 	}
-	
+
+	return nil, nil	
 }
 
 func (o *OktaClient) DeleteApplication(appID string) error {
