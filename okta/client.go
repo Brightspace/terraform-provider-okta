@@ -288,7 +288,7 @@ func (o *OktaClient) GetSAMLMetaData(appID string, keyID string) (string, error)
 		return samlMetaData, nil
 	}
 
-	return nil, nil	
+	return "", nil	
 }
 
 func (o *OktaClient) DeleteApplication(appID string) error {
