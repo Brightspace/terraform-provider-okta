@@ -145,7 +145,7 @@ func resourceAppCreate(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 
-	if samlMetadataDocument == nil {
+	if samlMetadataDocument == "" {
 		return fmt.Errorf("Request for SAML returned nothing from app %s", createdApplication.ID)
 	}
 
