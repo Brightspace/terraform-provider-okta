@@ -373,24 +373,34 @@ func (o *OktaClient) GetAppMember(appId string, userId string) (OktaUser, error)
 
 func (o *OktaClient) ListAppMembers(appId string) ([]OktaUser, error) {
 	oktaUsers := make([]OktaUser, 0)
-	url := fmt.Sprintf("%s/api/v1/apps/%s/users", o.OktaURL, appId)
+	resultsPerPage := 500
+	url := fmt.Sprintf("%s/api/v1/apps/%s/users?limit=%s", o.OktaURL, appId, resultsPerPage)
 
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
 
-	res, err := o.SendRequest(url, req)
-	if err != nil {
-		return oktaUsers, err
-	}
+	var resp *http.Response
+	err := try.Do(func(ampt int) (bool, error) {
+		var err error
+		retry := ampt < o.RetryMaximum
 
-	defer res.Body.Close()
+		resp, err := o.SendRequest(url, req)
+		if err != nil {
+			return retry, err
+		}
+		
+		defer res.Body.Close()
+	
+		err = json.NewDecoder(res.Body).Decode(&oktaUsers)
+		if err != nil {
+			return oktaUsers, err
+		}
 
-	err = json.NewDecoder(res.Body).Decode(&oktaUsers)
-	if err != nil {
-		return oktaUsers, err
-	}
+		return retry, err
+	})
+
 
 	return oktaUsers, nil
 }
