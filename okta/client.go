@@ -391,17 +391,15 @@ func (o *OktaClient) ListAppMembers(appId string) ([]OktaUser, error) {
 			return retry, err
 		}
 		
-		defer res.Body.Close()
+		defer resp.Body.Close()
 	
-		err = json.NewDecoder(res.Body).Decode(&oktaUsers)
+		err = json.NewDecoder(resp.Body).Decode(&oktaUsers)
 		if err != nil {
 			return oktaUsers, err
 		}
 
 		return retry, err
 	})
-
-
 	return oktaUsers, nil
 }
 
