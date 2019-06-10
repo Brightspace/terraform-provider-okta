@@ -400,6 +400,10 @@ func (o *OktaClient) ListAppMembers(appId string) ([]OktaUser, error) {
 
 		return retry, err
 	})
+	if err != nil {
+		return oktaUsers, err
+	}
+
 	return oktaUsers, nil
 }
 
