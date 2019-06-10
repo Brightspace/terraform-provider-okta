@@ -386,7 +386,7 @@ func (o *OktaClient) ListAppMembers(appId string) ([]OktaUser, error) {
 		var err error
 		retry := ampt < o.RetryMaximum
 
-		resp, err := o.SendRequest(url, req)
+		resp, err = o.SendRequest(url, req)
 		if err != nil {
 			return retry, err
 		}
