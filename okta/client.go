@@ -395,7 +395,7 @@ func (o *OktaClient) ListAppMembers(appId string) ([]OktaUser, error) {
 	
 		err = json.NewDecoder(resp.Body).Decode(&oktaUsers)
 		if err != nil {
-			return oktaUsers, err
+			return retry, err
 		}
 
 		return retry, err
