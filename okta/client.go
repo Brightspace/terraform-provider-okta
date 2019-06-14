@@ -271,7 +271,7 @@ func (o *OktaClient) GetSAMLMetaData(appID string, keyID string) (string, error)
 		if err != nil {
 			return "", err
 		}
-	
+
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(resp.Body)
 		samlMetaData := buf.String()
@@ -279,7 +279,7 @@ func (o *OktaClient) GetSAMLMetaData(appID string, keyID string) (string, error)
 		// WORKAROUND:
 		// Rate limit workaround: Returns rate limit error in SAML
 		// rather than as status code
-		if (strings.Contains(samlMetaData, "E0000047")) {
+		if strings.Contains(samlMetaData, "E0000047") {
 			rate_guard = rate_guard - 1
 			continue
 		}
@@ -288,7 +288,7 @@ func (o *OktaClient) GetSAMLMetaData(appID string, keyID string) (string, error)
 		return samlMetaData, nil
 	}
 
-	return "", nil	
+	return "", nil
 }
 
 func (o *OktaClient) DeleteApplication(appID string) error {
@@ -390,9 +390,9 @@ func (o *OktaClient) ListAppMembers(appId string) ([]OktaUser, error) {
 		if err != nil {
 			return retry, err
 		}
-		
+
 		defer resp.Body.Close()
-	
+
 		err = json.NewDecoder(resp.Body).Decode(&oktaUsers)
 		if err != nil {
 			return retry, err
