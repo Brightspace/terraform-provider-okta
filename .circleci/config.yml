@@ -14,7 +14,7 @@ jobs:
           command: go build
       - run:
           name: Test
-          command: go test -v -race
+          command: go test -v
   package:
     docker:
       - image: circleci/golang:1.12
