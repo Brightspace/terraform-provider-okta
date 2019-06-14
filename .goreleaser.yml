@@ -5,14 +5,12 @@ builds:
     - windows
   goarch:
   - amd64
-archives:
-  - id: default
-    format: zip
+archive:
+  format: zip
 release:
   disable: true
-blobs:
+s3:
 -
-  provider: s3
   bucket: tfreg
   region: us-east-1
   folder: "ace/providers/{{.ProjectName}}/{{.Version}}"
