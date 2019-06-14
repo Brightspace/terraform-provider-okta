@@ -4,19 +4,19 @@ jobs:
   build:
     docker:
       - image: circleci/golang:1.12
-    working_directory: /go/src/github.com/Brightspace/terraform-provider-okta
+    working_directory: /srv/github.com/Brightspace/terraform-provider-okta
     steps:
       - checkout
       - run:
           name: Build
-          command: go build -v
+          command: go build
       - run:
           name: Test
           command: go test -v -race
   package:
     docker:
       - image: circleci/golang:1.12
-    working_directory: /go/src/github.com/Brightspace/terraform-provider-okta
+    working_directory: /srv/github.com/Brightspace/terraform-provider-okta
     steps:
       - checkout
       - run:
