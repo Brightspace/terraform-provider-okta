@@ -4,7 +4,9 @@ jobs:
   build:
     docker:
       - image: circleci/golang:1.12
-    working_directory: ~/Brightspace/terraform-provider-okta
+    working_directory: ~
+    environment:
+      CGO_ENABLED: "0"
     steps:
       - checkout
       - run:
@@ -16,7 +18,9 @@ jobs:
   package:
     docker:
       - image: circleci/golang:1.12
-    working_directory: ~/Brightspace/terraform-provider-okta
+    working_directory: ~
+    environment:
+      CGO_ENABLED: "0"
     steps:
       - checkout
       - run:
