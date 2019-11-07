@@ -1,30 +1,26 @@
 TEST?=$$(go list ./... |grep -v 'vendor')
 GOFMT_FILES?=$$(find . -name '*.go' |grep -v vendor)
-PKG_NAME=$(shell basename $(CURDIR))
+PROJ_NAME=terraform-provider-okta
+TESTVARS=TF_ACC=OKTA_API_KEY=somethingelse
 
 default: build
+.PHONY: build build/nix build/win test testacc vet fmt fmtcheck errcheck
 
-build: fmtcheck
-	go build
+build: build/nix build/win
+
+build/nix: fmtcheck
+	GOOS=linux go build
 
 build/win: fmtcheck
 	GOOS=windows go build
 
 get:
-	go get -v -d
-
-copy/linux:
-	mkdir -p "examples/appusers/terraform.d/plugins/linux_amd64/" 
-	cp "$(shell basename $(CURDIR))" "examples/appusers/terraform.d/plugins/linux_amd64/" 
-
-copy/win:
-	mkdir -p "examples/appusers/terraform.d/plugins/windows_amd64/" 
-	cp "$(shell basename $(CURDIR)).exe" "examples/appusers/terraform.d/plugins/windows_amd64/" 
+	go mod download
 
 docker:
 	docker run --rm -it \
-		-v $(PWD):/srv/Brightspace/terraform-provider-$(PKG_NAME) \
-		--workdir /srv/Brightspace/terraform-provider-$(PKG_NAME) \
+		-v $(PWD):/srv/Brightspace/$(PROJ_NAME) \
+		--workdir /srv/Brightspace/$(PROJ_NAME) \
 		golang bash
 
 test: fmtcheck
@@ -33,7 +29,7 @@ test: fmtcheck
 		xargs -t -n4 go test $(TESTARGS) -timeout=30s -parallel=4
 
 testacc: fmtcheck
-	TF_ACC=1 go test $(TEST) -v $(TESTARGS) -timeout 120m
+	$(TESTVARS) go test $(TEST) -v $(TESTARGS) -timeout 120m
 
 vet:
 	@echo "go vet ."
@@ -52,6 +48,3 @@ fmtcheck:
 
 errcheck:
 	@sh -c "'$(CURDIR)/scripts/errcheck.sh'"
-
-.PHONY: build test testacc vet fmt fmtcheck errcheck
-
