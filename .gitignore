@@ -9,6 +9,7 @@
 *.so
 *.dylib
 vendor/
+terraform-provider*
 
 # Test binary, build with `go test -c`
 *.test
@@ -19,6 +20,7 @@ vendor/
 
 # End of https://www.gitignore.io/api/go
 
+*.env
 
 # Created by https://www.gitignore.io/api/terraform
 
