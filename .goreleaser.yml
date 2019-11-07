@@ -1,5 +1,12 @@
+before:
+  hooks:
+    - go mod download
+
 builds:
 - binary: "{{.ProjectName}}_v{{.Version}}"
+  env:
+    - GO111MODULE=on
+    - CGO_ENABLED=0
   goos:
     - linux
     - windows
@@ -7,10 +14,20 @@ builds:
   - amd64
 archive:
   format: zip
+checksum:
+  name_template: 'checksums.txt'
+changelog:
+  skip: true
 release:
-  disable: true
-s3:
+  github:
+    owner: Brightspace
+    name: terraform-provider-okta
+  prerelease: auto
+  name_template: "v{{.Version}}"
+
+blobs:
 -
+  provider: s3
   bucket: tfreg
   region: us-east-1
   folder: "ace/providers/{{.ProjectName}}/{{.Version}}"
