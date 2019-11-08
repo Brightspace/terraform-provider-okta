@@ -12,8 +12,6 @@ builds:
     - windows
   goarch:
   - amd64
-archive:
-  format: zip
 checksum:
   name_template: 'checksums.txt'
 changelog:
@@ -29,5 +27,4 @@ blobs:
 -
   provider: s3
   bucket: tfreg
-  region: us-east-1
   folder: "ace/providers/{{.ProjectName}}/{{.Version}}"
