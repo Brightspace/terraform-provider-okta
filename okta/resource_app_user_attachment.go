@@ -1,9 +1,9 @@
 package okta
 
 import (
-	"log"
-
+	"github.com/Brightspace/terraform-provider-okta/okta/api"
 	"github.com/hashicorp/terraform/helper/schema"
+	"log"
 )
 
 func resourceAppUserAttachment() *schema.Resource {
@@ -41,7 +41,7 @@ func resourceAppUserAttachment() *schema.Resource {
 }
 
 func resourceAppUserAttachmentCreate(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	client := m.(api.OktaClient)
 	app_id := d.Get("app_id").(string)
 	role := d.Get("role").(string)
 	saml_roles := d.Get("saml_roles").([]interface{})
@@ -66,7 +66,7 @@ func resourceAppUserAttachmentCreate(d *schema.ResourceData, m interface{}) erro
 }
 
 func resourceAppUserAttachmentUpdate(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	client := m.(api.OktaClient)
 	app_id := d.Get("app_id").(string)
 	role := d.Get("role").(string)
 	saml_roles := d.Get("saml_roles").([]interface{})
@@ -84,7 +84,7 @@ func resourceAppUserAttachmentUpdate(d *schema.ResourceData, m interface{}) erro
 }
 
 func resourceAppUserAttachmentRead(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	client := m.(api.OktaClient)
 
 	member, err := client.GetAppMember(d.Get("app_id").(string), d.Id())
 	if err != nil {
@@ -105,7 +105,7 @@ func resourceAppUserAttachmentRead(d *schema.ResourceData, m interface{}) error 
 }
 
 func resourceAppUserAttachmentDelete(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	client := m.(api.OktaClient)
 
 	err := client.RemoveMemberFromApp(d.Get("app_id").(string), d.Id())
 	if err != nil {

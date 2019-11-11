@@ -1,6 +1,7 @@
 package okta
 
 import (
+	"github.com/Brightspace/terraform-provider-okta/okta/api"
 	"github.com/hashicorp/terraform/helper/schema"
 	"log"
 	"sort"
@@ -224,7 +225,7 @@ func arraysEqual(x []string, y []string) bool {
 }
 
 func resourceAppUsersCreate(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	client := m.(api.OktaClient)
 	app_id := d.Get("app_id").(string)
 	role := d.Get("role_readonly").(string)
 
@@ -252,7 +253,7 @@ func resourceAppUsersCreate(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceAppUsersUpdate(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	client := m.(api.OktaClient)
 	app_id := d.Get("app_id").(string)
 	role := d.Get("role_readonly").(string)
 
@@ -308,7 +309,7 @@ func resourceAppUsersUpdate(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceAppUsersRead(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	client := m.(api.OktaClient)
 	app_id := d.Get("app_id").(string)
 	samlToUser := getRoleMappings(d)
 
@@ -350,7 +351,7 @@ func resourceAppUsersRead(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceAppUsersDelete(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	client := m.(api.OktaClient)
 	app_id := d.Get("app_id").(string)
 
 	members, err := client.ListAppMembers(app_id)

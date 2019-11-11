@@ -88,8 +88,8 @@ func resourceAppCreate(d *schema.ResourceData, m interface{}) error {
 		Name:       d.Get("name").(string),
 		Label:      d.Get("label").(string),
 		SignOnMode: d.Get("sign_on_mode").(string),
-		Settings: Settings{
-			App: AppSettings{
+		Settings: api.Settings{
+			App: api.AppSettings{
 				AwsEnvironmentType:  d.Get("aws_environment_type").(string),
 				GroupFilter:         d.Get("group_filter").(string),
 				LoginURL:            d.Get("login_url").(string),
@@ -168,13 +168,13 @@ func resourceAppUpdate(d *schema.ResourceData, m interface{}) error {
 	awsKey := d.Get("aws_okta_iam_user_id").(string)
 	awsSecret := d.Get("aws_okta_iam_user_secret").(string)
 
-	application := Application{
+	application := api.Application{
 		ID:         d.Id(),
 		Name:       d.Get("name").(string),
 		Label:      d.Get("label").(string),
 		SignOnMode: d.Get("sign_on_mode").(string),
-		Settings: Settings{
-			App: AppSettings{
+		Settings: api.Settings{
+			App: api.AppSettings{
 				AwsEnvironmentType:  d.Get("aws_environment_type").(string),
 				GroupFilter:         d.Get("group_filter").(string),
 				LoginURL:            d.Get("login_url").(string),

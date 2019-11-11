@@ -1,7 +1,6 @@
 package okta
 
 import (
-	"github.com/Brightspace/terraform-provider-okta/okta/api"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 )

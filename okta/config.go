@@ -2,15 +2,14 @@ package okta
 
 import (
 	"github.com/Brightspace/terraform-provider-okta/okta/api"
-	"http"
+	"net/http"
 	"time"
 )
 
 func NewClient(c *Config) api.OktaClient {
 	timeout := time.Duration(time.Second * 30)
-	client = http.Client{
-		Timeout: timeout,
-	}()
+	client := http.Client{}
+	client.Timeout = timeout
 
 	return api.OktaClient{
 		OktaURL:      c.OktaURL,
