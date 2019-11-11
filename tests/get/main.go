@@ -30,8 +30,8 @@ func main() {
 		fmt.Println("err:\n", err)
 		return
 	}
-	fmt.Println("id:\n", result.ID)
-	fmt.Println("name:\n", result.Attributes.Name)
-	fmt.Println("arn:\n", result.Attributes.Arn)
-	fmt.Println("external_id:\n", result.Attributes.ExternalID)
+	fmt.Println("ID:\n", result.Application.ID)
+	fmt.Println("Name:\n", result.Application.Name)
+	fmt.Println("Label:\n", result.Application.Label)
+	fmt.Println("SignOnMode:\n", result.Application.SignOnMode)
 }
