@@ -62,11 +62,35 @@ type Signing struct {
 ////
 ////
 type Okta struct {
-	APIKey       string
+	APIKey       []byte
 	HostURL      string
 	OrgID        string
 	RetryMaximum int
 	RestClient   *resty.Client
+}
+
+func (o *Okta) GetApp(appID string) (*IdentifiedApplication, error) {
+	restClient := cloudability.GetRestClient()
+
+	url := fmt.Sprintf("%s/api/v1/apps/%s", o.OktaURL, appID)
+	req := restClient.R().SetBody("").SetResult(&IdentifiedApplication{})
+
+	resp, err := req.Get(url)
+	if err != nil {
+		return nil, err
+	}
+
+	status := resp.StatusCode()
+	if status == http.StatusNotFound {
+		return nil, nil
+	}
+
+	response := resp.Result().(*IdentifiedApplication)
+	if response == nil {
+		return nil, nil
+	}
+
+	return response, nil
 }
 
 func (okta *Okta) SetRestClient(rest *resty.Client) {
@@ -101,10 +125,10 @@ func (okta *Okta) SetRestClient(rest *resty.Client) {
 
 	//Authentication
 	rest.OnBeforeRequest(func(c *resty.Client, r *resty.Request) error {
-		// sign, _ := NewHTTPSignature(okta.APIKey)
-		// for name, value := range sign {
-		// r.SetHeader(name, value.(string))
-		// }
+		sign, _ := NewHTTPSignature(okta.APIKey)
+		for name, value := range sign {
+			r.SetHeader(name, value.(string))
+		}
 		return nil
 	})
 

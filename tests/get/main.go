@@ -11,19 +11,18 @@ func main() {
 	if len(os.Args) < 2 {
 		log.Fatal("Missing ID for evident resource")
 	}
-	arg := os.Args[1]
+	appId := os.Args[1]
 
 	client := api.Okta{
-		Credentials: api.Credentials{
-			AccessKey: []byte(os.Getenv("EVIDENT_ACCESS_KEY")),
-			SecretKey: []byte(os.Getenv("EVIDENT_SECRET_KEY")),
-		},
+		APIKey:       os.Getenv("OKTA_API_KEY"),
+		HostURL:      os.Getenv("OKTA_HOST_URL"),
+		OrgID:        os.Getenv("OKTA_ORG_ID"),
 		RetryMaximum: 5,
 	}
 
-	result, err := client.Get(arg)
+	result, err := client.GetApp(appId)
 	if result == nil {
-		fmt.Println("id could not be found:\n", arg)
+		fmt.Println("id could not be found:\n", appId)
 		return
 	}
 
