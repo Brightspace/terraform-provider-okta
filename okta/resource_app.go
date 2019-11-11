@@ -5,43 +5,9 @@ import (
 	"log"
 	"time"
 
+	"github.com/Brightspace/terraform-provider-okta/okta/api"
 	"github.com/hashicorp/terraform/helper/schema"
 )
-
-type Settings struct {
-	App AppSettings `json:"app"`
-}
-
-type Application struct {
-	ID         string   `json:"id"`
-	Name       string   `json:"name"`
-	Label      string   `json:"label"`
-	SignOnMode string   `json:"signOnMode"`
-	Settings   Settings `json:"settings"`
-}
-
-type AppSettings struct {
-	AwsEnvironmentType  string `json:"awsEnvironmentType"`
-	GroupFilter         string `json:"groupFilter"`
-	LoginURL            string `json:"loginUrl"`
-	JoinAllRoles        bool   `json:"joinAllRoles"`
-	SessionDuration     int    `json:"sessionDuration"`
-	RoleValuePattern    string `json:"roleValuePattern"`
-	IdentityProviderArn string `json:"identityProviderArn"`
-}
-
-type IdentifiedApplication struct {
-	Application
-	Credentials Credentials `json:"credentials"`
-}
-
-type Credentials struct {
-	Signing Signing `json:"signing"`
-}
-
-type Signing struct {
-	KeyID string `json:"kid"`
-}
 
 func resourceApp() *schema.Resource {
 	return &schema.Resource{
@@ -114,11 +80,11 @@ func resourceApp() *schema.Resource {
 }
 
 func resourceAppCreate(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	client := m.(api.OktaClient)
 	awsKey := d.Get("aws_okta_iam_user_id").(string)
 	awsSecret := d.Get("aws_okta_iam_user_secret").(string)
 
-	application := Application{
+	application := api.Application{
 		Name:       d.Get("name").(string),
 		Label:      d.Get("label").(string),
 		SignOnMode: d.Get("sign_on_mode").(string),
@@ -162,7 +128,7 @@ func resourceAppCreate(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceAppRead(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	client := m.(api.OktaClient)
 	appID := d.Id()
 
 	readApplication, applicationRemoved, err := client.ReadApplication(appID)
@@ -198,7 +164,7 @@ func resourceAppRead(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceAppUpdate(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	client := m.(api.OktaClient)
 	awsKey := d.Get("aws_okta_iam_user_id").(string)
 	awsSecret := d.Get("aws_okta_iam_user_secret").(string)
 
@@ -245,7 +211,7 @@ func resourceAppUpdate(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceAppDelete(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	client := m.(api.OktaClient)
 	appID := d.Id()
 
 	err := client.DeleteApplication(appID)

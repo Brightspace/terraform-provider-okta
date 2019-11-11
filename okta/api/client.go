@@ -1,4 +1,4 @@
-package okta
+package api
 
 import (
 	"bytes"
@@ -19,14 +19,39 @@ import (
 	"golang.org/x/net/html"
 )
 
-type Config struct {
-	OktaURL      string
-	OktaAdminUrl string
-	APIKey       string
-	UserName     string
-	Password     string
-	OrgID        string
-	RetryMaximum int
+type Settings struct {
+	App AppSettings `json:"app"`
+}
+
+type AppSettings struct {
+	AwsEnvironmentType  string `json:"awsEnvironmentType"`
+	GroupFilter         string `json:"groupFilter"`
+	LoginURL            string `json:"loginUrl"`
+	JoinAllRoles        bool   `json:"joinAllRoles"`
+	SessionDuration     int    `json:"sessionDuration"`
+	RoleValuePattern    string `json:"roleValuePattern"`
+	IdentityProviderArn string `json:"identityProviderArn"`
+}
+
+type Application struct {
+	ID         string   `json:"id"`
+	Name       string   `json:"name"`
+	Label      string   `json:"label"`
+	SignOnMode string   `json:"signOnMode"`
+	Settings   Settings `json:"settings"`
+}
+
+type IdentifiedApplication struct {
+	Application
+	Credentials Credentials `json:"credentials"`
+}
+
+type Credentials struct {
+	Signing Signing `json:"signing"`
+}
+
+type Signing struct {
+	KeyID string `json:"kid"`
 }
 
 type OktaClient struct {
@@ -37,6 +62,7 @@ type OktaClient struct {
 	Password     string
 	OrgID        string
 	RetryMaximum int
+	RestClient   http.Client
 }
 
 type OktaAuthResponse struct {
@@ -101,32 +127,9 @@ type OktaUserProfile struct {
 	SamlRoles   []string `json:"samlRoles,omitempty"`
 }
 
-func NewClient(c *Config) OktaClient {
-	client = initHTTPClient()
-
-	return OktaClient{
-		OktaURL:      c.OktaURL,
-		OktaAdminUrl: c.OktaAdminUrl,
-		APIKey:       c.APIKey,
-		UserName:     c.UserName,
-		Password:     c.Password,
-		OrgID:        c.OrgID,
-		RetryMaximum: c.RetryMaximum,
-	}
-}
-
-var client http.Client
-var config *Config
-
-func initHTTPClient() http.Client {
-	timeout := time.Duration(time.Second * 30)
-	return http.Client{
-		Timeout: timeout,
-	}
-}
-
 func (o *OktaClient) SendRequest(url string, req *http.Request) (*http.Response, error) {
 	var resp *http.Response
+	client := o.RestClient
 	err := try.Do(func(ampt int) (bool, error) {
 		var err error
 		resp, err = client.Do(req)
@@ -466,6 +469,7 @@ func (o *OktaClient) GetUserIDByEmail(user string) (string, error) {
 
 func (o *OktaClient) DelayRateLimit(appID string) error {
 	url := fmt.Sprintf("%s/api/v1/apps/%s", o.OktaURL, appID)
+	client := o.RestClient
 
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Content-Type", "application/json")
@@ -518,6 +522,7 @@ func (o *OktaClient) DelayRateLimit(appID string) error {
 }
 
 func (o *OktaClient) RevokeProvisioningSettings(appID string) error {
+	client := o.RestClient
 	log.Println("[DEBUG] Running RevokeProvisioningSettings method...")
 	authBody := fmt.Sprintf(`{"username":"%s", "password":"%s"}`, o.UserName, o.Password)
 
@@ -641,6 +646,7 @@ func (o *OktaClient) RevokeProvisioningSettings(appID string) error {
 
 func (o *OktaClient) SetProvisioningSettings(appID string, oktaAWSKey string, oktaAWSSecretKey string) error {
 	log.Println("[DEBUG] Running SetProvisioningSettings method...")
+	client := o.RestClient
 	authBody := fmt.Sprintf(`{"username":"%s", "password":"%s"}`, o.UserName, o.Password)
 
 	cookieJar, _ := cookiejar.New(nil)
