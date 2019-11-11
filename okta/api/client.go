@@ -15,9 +15,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/matryer/try"
 	"golang.org/x/net/html"
 )
+
+const MaximumRetryWaitTimeInSeconds = 15 * time.Minute
+const RetryWaitTimeInSeconds = 30 * time.Second
 
 type Settings struct {
 	App AppSettings `json:"app"`
@@ -53,6 +57,72 @@ type Credentials struct {
 type Signing struct {
 	KeyID string `json:"kid"`
 }
+
+////
+////
+////
+type Okta struct {
+	APIKey       string
+	HostURL      string
+	OrgID        string
+	RetryMaximum int
+	RestClient   *resty.Client
+}
+
+func (okta *Okta) SetRestClient(rest *resty.Client) {
+	rest.SetHostURL(okta.HostURL)
+
+	// Retry
+	rest.SetRetryCount(okta.RetryMaximum)
+	rest.SetRetryWaitTime(RetryWaitTimeInSeconds)
+	rest.SetRetryMaxWaitTime(MaximumRetryWaitTimeInSeconds)
+	rest.AddRetryCondition(func(r *resty.Response, err error) bool {
+		switch code := r.StatusCode(); code {
+		case http.StatusTooManyRequests:
+			return true
+		default:
+			return false
+		}
+	})
+
+	// Error handling
+	rest.OnAfterResponse(func(c *resty.Client, r *resty.Response) error {
+		status := r.StatusCode()
+		if status == http.StatusNotFound {
+			return nil
+		}
+
+		if (status < 200) || (status >= 400) {
+			return fmt.Errorf("Response not successful: Received status code %d.", status)
+		}
+
+		return nil
+	})
+
+	//Authentication
+	rest.OnBeforeRequest(func(c *resty.Client, r *resty.Request) error {
+		// sign, _ := NewHTTPSignature(okta.APIKey)
+		// for name, value := range sign {
+		// r.SetHeader(name, value.(string))
+		// }
+		return nil
+	})
+
+	okta.RestClient = rest
+}
+
+func (okta *Okta) GetRestClient() *resty.Client {
+	if okta.RestClient == nil {
+		rest := resty.New()
+		okta.SetRestClient(rest)
+	}
+	return okta.RestClient
+}
+
+///
+///
+///
+///
 
 type OktaClient struct {
 	OktaURL      string
