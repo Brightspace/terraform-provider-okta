@@ -68,7 +68,9 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 		RetryMaximum: 25,
 	}
 
-	client := NewClient(&config)
+	okta, web := NewClient(&config)
+	config.Okta = okta
+	config.Web = web
 
-	return client, nil
+	return config, nil
 }

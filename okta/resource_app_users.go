@@ -1,7 +1,6 @@
 package okta
 
 import (
-	"github.com/Brightspace/terraform-provider-okta/okta/api"
 	"github.com/hashicorp/terraform/helper/schema"
 	"log"
 	"sort"
@@ -225,7 +224,8 @@ func arraysEqual(x []string, y []string) bool {
 }
 
 func resourceAppUsersCreate(d *schema.ResourceData, m interface{}) error {
-	client := m.(api.OktaClient)
+	config := m.(Config)
+	client := config.Okta
 	app_id := d.Get("app_id").(string)
 	role := d.Get("role_readonly").(string)
 
@@ -239,7 +239,7 @@ func resourceAppUsersCreate(d *schema.ResourceData, m interface{}) error {
 			return err
 		}
 
-		_, err = client.AddMemberToApp(app_id, user_id, role, roles)
+		_, err = client.AddAppMember(app_id, user_id, role, roles)
 		if err != nil {
 			return err
 		}
@@ -253,7 +253,8 @@ func resourceAppUsersCreate(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceAppUsersUpdate(d *schema.ResourceData, m interface{}) error {
-	client := m.(api.OktaClient)
+	config := m.(Config)
+	client := config.Okta
 	app_id := d.Get("app_id").(string)
 	role := d.Get("role_readonly").(string)
 
@@ -281,7 +282,7 @@ func resourceAppUsersUpdate(d *schema.ResourceData, m interface{}) error {
 
 		if update {
 			log.Printf("[WARN] Updating user (%s) in app (%s) to fit roles", user, app_id)
-			_, err := client.AddMemberToApp(app_id, user_id, role, roles)
+			_, err := client.AddAppMember(app_id, user_id, role, roles)
 			if err != nil {
 				return err
 			}
@@ -299,7 +300,7 @@ func resourceAppUsersUpdate(d *schema.ResourceData, m interface{}) error {
 		}
 
 		log.Printf("[WARN] User (%s) in app (%s) not found in list, removing", member.Profile.Email, app_id)
-		err := client.RemoveMemberFromApp(app_id, member.ID)
+		err := client.RemoveAppMember(app_id, member.ID)
 		if err != nil {
 			return err
 		}
@@ -309,7 +310,8 @@ func resourceAppUsersUpdate(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceAppUsersRead(d *schema.ResourceData, m interface{}) error {
-	client := m.(api.OktaClient)
+	config := m.(Config)
+	client := config.Okta
 	app_id := d.Get("app_id").(string)
 	samlToUser := getRoleMappings(d)
 
@@ -351,7 +353,8 @@ func resourceAppUsersRead(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceAppUsersDelete(d *schema.ResourceData, m interface{}) error {
-	client := m.(api.OktaClient)
+	config := m.(Config)
+	client := config.Okta
 	app_id := d.Get("app_id").(string)
 
 	members, err := client.ListAppMembers(app_id)
@@ -360,7 +363,7 @@ func resourceAppUsersDelete(d *schema.ResourceData, m interface{}) error {
 	}
 
 	for _, member := range members {
-		err := client.RemoveMemberFromApp(app_id, member.ID)
+		err := client.RemoveAppMember(app_id, member.ID)
 		if err != nil {
 			return err
 		}

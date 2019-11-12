@@ -1,7 +1,6 @@
 package okta
 
 import (
-	"github.com/Brightspace/terraform-provider-okta/okta/api"
 	"github.com/hashicorp/terraform/helper/schema"
 	"log"
 )
@@ -41,7 +40,9 @@ func resourceAppUserAttachment() *schema.Resource {
 }
 
 func resourceAppUserAttachmentCreate(d *schema.ResourceData, m interface{}) error {
-	client := m.(api.OktaClient)
+	config := m.(Config)
+	client := config.Okta
+
 	app_id := d.Get("app_id").(string)
 	role := d.Get("role").(string)
 	saml_roles := d.Get("saml_roles").([]interface{})
@@ -55,7 +56,7 @@ func resourceAppUserAttachmentCreate(d *schema.ResourceData, m interface{}) erro
 		return err
 	}
 
-	_, err = client.AddMemberToApp(app_id, user_id, role, roles)
+	_, err = client.AddAppMember(app_id, user_id, role, roles)
 	if err != nil {
 		return err
 	}
@@ -66,7 +67,9 @@ func resourceAppUserAttachmentCreate(d *schema.ResourceData, m interface{}) erro
 }
 
 func resourceAppUserAttachmentUpdate(d *schema.ResourceData, m interface{}) error {
-	client := m.(api.OktaClient)
+	config := m.(Config)
+	client := config.Okta
+
 	app_id := d.Get("app_id").(string)
 	role := d.Get("role").(string)
 	saml_roles := d.Get("saml_roles").([]interface{})
@@ -75,7 +78,7 @@ func resourceAppUserAttachmentUpdate(d *schema.ResourceData, m interface{}) erro
 		roles[i] = value.(string)
 	}
 
-	_, err := client.AddMemberToApp(app_id, d.Id(), role, roles)
+	_, err := client.AddAppMember(app_id, d.Id(), role, roles)
 	if err != nil {
 		return err
 	}
@@ -84,7 +87,8 @@ func resourceAppUserAttachmentUpdate(d *schema.ResourceData, m interface{}) erro
 }
 
 func resourceAppUserAttachmentRead(d *schema.ResourceData, m interface{}) error {
-	client := m.(api.OktaClient)
+	config := m.(Config)
+	client := config.Okta
 
 	member, err := client.GetAppMember(d.Get("app_id").(string), d.Id())
 	if err != nil {
@@ -105,9 +109,10 @@ func resourceAppUserAttachmentRead(d *schema.ResourceData, m interface{}) error 
 }
 
 func resourceAppUserAttachmentDelete(d *schema.ResourceData, m interface{}) error {
-	client := m.(api.OktaClient)
+	config := m.(Config)
+	client := config.Okta
 
-	err := client.RemoveMemberFromApp(d.Get("app_id").(string), d.Id())
+	err := client.RemoveAppMember(d.Get("app_id").(string), d.Id())
 	if err != nil {
 		return err
 	}

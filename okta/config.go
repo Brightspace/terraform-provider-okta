@@ -2,25 +2,24 @@ package okta
 
 import (
 	"github.com/Brightspace/terraform-provider-okta/okta/api"
-	"net/http"
-	"time"
 )
 
-func NewClient(c *Config) api.OktaClient {
-	timeout := time.Duration(time.Second * 30)
-	client := http.Client{}
-	client.Timeout = timeout
-
-	return api.OktaClient{
-		OktaURL:      c.OktaURL,
-		OktaAdminUrl: c.OktaAdminUrl,
+func NewClient(c *Config) (api.Okta, api.OktaWebClient) {
+	okta := api.Okta{
+		HostURL:      c.OktaURL,
 		APIKey:       c.APIKey,
-		UserName:     c.UserName,
-		Password:     c.Password,
-		OrgID:        c.OrgID,
 		RetryMaximum: c.RetryMaximum,
-		RestClient:   client,
 	}
+
+	web := api.OktaWebClient{
+		HostURL:  c.OktaURL,
+		AdminURL: c.OktaAdminUrl,
+		UserName: c.UserName,
+		Password: c.Password,
+		OrgID:    c.OrgID,
+	}
+
+	return okta, web
 }
 
 type Config struct {
@@ -31,4 +30,6 @@ type Config struct {
 	Password     string
 	OrgID        string
 	RetryMaximum int
+	Okta         api.Okta
+	Web          api.OktaWebClient
 }
