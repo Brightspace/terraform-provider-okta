@@ -20,7 +20,7 @@ func main() {
 		RetryMaximum: 5,
 	}
 
-	result, err := client.GetApp(appId)
+	result, err := client.GetApplication(appId)
 	if result == nil {
 		fmt.Println("id could not be found:\n", appId)
 		return
@@ -35,4 +35,5 @@ func main() {
 	fmt.Println("Name:\n", result.Application.Name)
 	fmt.Println("Label:\n", result.Application.Label)
 	fmt.Println("SignOnMode:\n", result.Application.SignOnMode)
+	fmt.Println("Signing.KeyID:\n", result.Credentials.Signing.KeyID)
 }
