@@ -35,12 +35,15 @@ type AppSettings struct {
 	SessionDuration     int    `json:"sessionDuration"`
 	RoleValuePattern    string `json:"roleValuePattern"`
 	IdentityProviderArn string `json:"identityProviderArn"`
+	AccessKey           string `json:"accessKey"`
+	SecretKey           string `json:"secretKey"`
 }
 
 type Application struct {
 	ID         string   `json:"id"`
 	Name       string   `json:"name"`
 	Label      string   `json:"label"`
+	Features   []string `json:"features"`
 	SignOnMode string   `json:"signOnMode"`
 	Settings   Settings `json:"settings"`
 }
@@ -69,7 +72,7 @@ type Okta struct {
 	RestClient   *resty.Client
 }
 
-func (o *Okta) GetApp(appID string) (*IdentifiedApplication, error) {
+func (o *Okta) GetApplication(appID string) (*IdentifiedApplication, error) {
 	restClient := o.GetRestClient()
 
 	url := fmt.Sprintf("/api/v1/apps/%s", appID)
@@ -79,7 +82,7 @@ func (o *Okta) GetApp(appID string) (*IdentifiedApplication, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(resp)
+
 	status := resp.StatusCode()
 	if status == http.StatusNotFound {
 		return nil, nil
@@ -90,6 +93,97 @@ func (o *Okta) GetApp(appID string) (*IdentifiedApplication, error) {
 		return nil, nil
 	}
 
+	return response, nil
+}
+
+func (o *Okta) CreateApplication(application Application) (*IdentifiedApplication, error) {
+	var result *IdentifiedApplication
+	restClient := o.GetRestClient()
+
+	body, err := json.Marshal(application)
+	if err != nil {
+		return result, err
+	}
+
+	url := "/api/v1/apps"
+	req := restClient.R().SetBody(string(body)).SetResult(&IdentifiedApplication{})
+
+	resp, err := req.Post(url)
+	if err != nil {
+		return result, err
+	}
+
+	response := resp.Result().(*IdentifiedApplication)
+	return response, nil
+}
+
+func (o *Okta) DeactivateApplication(appID string) error {
+	restClient := cloudability.GetRestClient()
+
+	url := fmt.Sprintf("/api/v1/apps/%s/lifecycle/deactivate", appID)
+	req := restClient.R().SetBody("")
+
+	_, err := req.Post(url)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (o *Okta) DeleteApplication(appID string) error {
+	restClient := cloudability.GetRestClient()
+
+	url := fmt.Sprintf("%s/api/v1/apps/%s", appID)
+	req := restClient.R().SetBody("")
+
+	_, err := req.Delete(url)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (o *Okta) GetSAMLMetadata(appID string, keyID string) (string, error) {
+	restClient := o.GetRestClient()
+
+	url := fmt.Sprintf("/api/v1/apps/%s/sso/saml/metadata?kid=%s", appID, keyID)
+	req := restClient.R().SetBody("")
+	req.SetHeader("Accept", "application/xml")
+
+	resp, err := req.Get(url)
+	if err != nil {
+		return "", err
+	}
+
+	status := resp.StatusCode()
+	if status == http.StatusNotFound {
+		return "", nil
+	}
+
+	response := string(resp.Body())
+	return response, nil
+}
+
+func (o *Okta) UpdateApplication(application Application) (*Application, error) {
+	var result *IdentifiedApplication
+	restClient := o.GetRestClient()
+
+	body, err := json.Marshal(application)
+	if err != nil {
+		return result, err
+	}
+
+	url := fmt.Sprintf("/api/v1/apps/%s", application.ID)
+	req := restClient.R().SetBody(string(body)).SetResult(&IdentifiedApplication{})
+
+	resp, err := req.Put(url)
+	if err != nil {
+		return result, err
+	}
+
+	response := resp.Result().(*IdentifiedApplication)
 	return response, nil
 }
 
@@ -123,14 +217,8 @@ func (okta *Okta) SetRestClient(rest *resty.Client) {
 		return nil
 	})
 
-	//Authentication
-	rest.OnBeforeRequest(func(c *resty.Client, r *resty.Request) error {
-		sign, _ := NewHTTPSignature(okta.APIKey)
-		for name, value := range sign {
-			r.SetHeader(name, value.(string))
-		}
-		return nil
-	})
+	sign, _ := NewHTTPSignature(okta.APIKey)
+	rest.SetHeaders(sign)
 
 	okta.RestClient = rest
 }
@@ -141,6 +229,33 @@ func (okta *Okta) GetRestClient() *resty.Client {
 		okta.SetRestClient(rest)
 	}
 	return okta.RestClient
+}
+
+func (o *Okta) GetUserIDByEmail(user string) (string, error) {
+
+	restClient := o.GetRestClient()
+	url := fmt.Sprintf("/api/v1/users?q=%s", user)
+
+	req := restClient.R().SetBody("").SetResult(&[]OktaUser{})
+
+	resp, err := req.Get(url)
+	if err != nil {
+		return "", err
+	}
+
+	status := resp.StatusCode()
+	if status == http.StatusNotFound {
+		return "", nil
+	}
+
+	result, err := resp.Result().([]*OktaUser)
+	for _, user := range result {
+		if strings.Contains(user.Profile.Login, "desire2learn.com") {
+			return user.ID, nil
+		}
+	}
+
+	return "", nil
 }
 
 ///
@@ -166,35 +281,10 @@ type OktaAuthResponse struct {
 	Status       string    `json:"status"`
 }
 
-type OktaGroup struct {
-	ID                    string           `json:"id,omitempty"`
-	Created               *time.Time       `json:"created,omitempty"`
-	LastUpdated           *time.Time       `json:"lastUpdated,omitempty"`
-	LastMembershipUpdated *time.Time       `json:"lastMembershipUpdated,omitempty"`
-	ObjectClass           []string         `json:"objectClass,omitempty"`
-	Type                  string           `json:"type,omitempty"`
-	Profile               OktaGroupProfile `json:"profile"`
-}
-
-type OktaGroupProfile struct {
-	Name        string `json:"name,omitempty"`
-	Description string `json:"description,omitempty"`
-}
-
-type OktaGroupSaml struct {
-	ID      string               `json:"id,omitempty"`
-	Profile OktaGroupProfileSaml `json:"profile"`
-}
-
 type OktaAppUser struct {
 	ID      string               `json:"id,omitempty"`
 	Scope   string               `json:"scope,omitempty"`
 	Profile OktaGroupProfileSaml `json:"profile"`
-}
-
-type OktaGroupProfileSaml struct {
-	Role      string   `json:"role,omitempty"`
-	SamlRoles []string `json:"samlRoles,omitempty"`
 }
 
 type OktaUser struct {
@@ -251,177 +341,6 @@ func (o *OktaClient) SendRequest(url string, req *http.Request) (*http.Response,
 		return retry, err
 	})
 	return resp, err
-}
-
-func (o *OktaClient) CreateApplication(application Application) (IdentifiedApplication, error) {
-	var idApp IdentifiedApplication
-
-	url := fmt.Sprintf("%s/api/v1/apps", o.OktaURL)
-
-	body, err := json.Marshal(application)
-	if err != nil {
-		return idApp, err
-	}
-
-	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
-
-	resp, err := o.SendRequest(url, req)
-	if err != nil {
-		return idApp, err
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		buf := new(bytes.Buffer)
-		buf.ReadFrom(resp.Body)
-		msg := buf.String()
-
-		return idApp, fmt.Errorf("Error creating application in Okta: %s", msg)
-	}
-
-	err = json.NewDecoder(resp.Body).Decode(&idApp)
-	if err != nil {
-		return idApp, err
-	}
-
-	return idApp, nil
-}
-
-func (o *OktaClient) UpdateApplication(application Application) (Application, error) {
-	var app Application
-	url := fmt.Sprintf("%s/api/v1/apps/%s", o.OktaURL, application.ID)
-
-	body, err := json.Marshal(application)
-	if err != nil {
-		return app, err
-	}
-
-	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
-
-	resp, err := o.SendRequest(url, req)
-	if err != nil {
-		return app, err
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		buf := new(bytes.Buffer)
-		buf.ReadFrom(resp.Body)
-		msg := buf.String()
-
-		return app, fmt.Errorf("Error updating application in Okta: %s \nRequest Body: %s", msg, string(body))
-	}
-
-	err = json.NewDecoder(resp.Body).Decode(&app)
-	if err != nil {
-		return app, err
-	}
-
-	return app, nil
-}
-
-func (o *OktaClient) ReadApplication(appID string) (IdentifiedApplication, bool, error) {
-	var app IdentifiedApplication
-	url := fmt.Sprintf("%s/api/v1/apps/%s", o.OktaURL, appID)
-
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
-
-	resp, err := o.SendRequest(url, req)
-	if err != nil {
-		return app, false, err
-	}
-
-	if resp.StatusCode == 404 {
-		return app, true, nil
-	}
-
-	err = json.NewDecoder(resp.Body).Decode(&app)
-	if err != nil {
-		return app, false, err
-	}
-
-	return app, false, err
-}
-
-func (o *OktaClient) GetSAMLMetaData(appID string, keyID string) (string, error) {
-	url := fmt.Sprintf("%s/api/v1/apps/%s/sso/saml/metadata?kid=%s", o.OktaURL, appID, keyID)
-
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/xml")
-	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
-
-	rate_guard := 10
-	for rate_guard > 0 {
-		resp, err := o.SendRequest(url, req)
-		if err != nil {
-			return "", err
-		}
-
-		buf := new(bytes.Buffer)
-		buf.ReadFrom(resp.Body)
-		samlMetaData := buf.String()
-
-		// WORKAROUND:
-		// Rate limit workaround: Returns rate limit error in SAML
-		// rather than as status code
-		if strings.Contains(samlMetaData, "E0000047") {
-			rate_guard = rate_guard - 1
-			continue
-		}
-
-		rate_guard = -1
-		return samlMetaData, nil
-	}
-
-	return "", nil
-}
-
-func (o *OktaClient) DeleteApplication(appID string) error {
-	// Deactivate app first
-	url := fmt.Sprintf("%s/api/v1/apps/%s/lifecycle/deactivate", o.OktaURL, appID)
-
-	req, _ := http.NewRequest("POST", url, nil)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
-
-	res, err := o.SendRequest(url, req)
-	if err != nil {
-		return err
-	}
-
-	// Delete app
-	url = fmt.Sprintf("%s/api/v1/apps/%s", o.OktaURL, appID)
-
-	req, _ = http.NewRequest("DELETE", url, nil)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
-
-	res, err = o.SendRequest(url, req)
-	if err != nil {
-		return err
-	}
-
-	if res.StatusCode != 204 {
-		buf := new(bytes.Buffer)
-		buf.ReadFrom(res.Body)
-		msg := buf.String()
-
-		return fmt.Errorf("Error deleting application in Okta: %s", msg)
-	}
-
-	return nil
 }
 
 func (o *OktaClient) RemoveMemberFromApp(appId string, userId string) error {
@@ -529,90 +448,6 @@ func (o *OktaClient) AddMemberToApp(appId string, userId string, role string, ro
 	}
 
 	return "", nil
-}
-
-func (o *OktaClient) GetUserIDByEmail(user string) (string, error) {
-	var oktaUser []OktaUser
-	url := fmt.Sprintf("%s/api/v1/users?q=%s", o.OktaURL, user)
-
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
-
-	resp, err := o.SendRequest(url, req)
-	if err != nil {
-		return "", err
-	}
-
-	defer resp.Body.Close()
-
-	err = json.NewDecoder(resp.Body).Decode(&oktaUser)
-	if err != nil {
-		return "", err
-	}
-
-	for _, user := range oktaUser {
-		if strings.Contains(user.Profile.Login, "desire2learn.com") {
-			return user.ID, nil
-		}
-	}
-
-	return "", fmt.Errorf("Could not find user in desire2learn domain for email %s", user)
-}
-
-func (o *OktaClient) DelayRateLimit(appID string) error {
-	url := fmt.Sprintf("%s/api/v1/apps/%s", o.OktaURL, appID)
-	client := o.RestClient
-
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("SSWS %s", o.APIKey))
-
-	err := try.Do(func(ampt int) (bool, error) {
-		resp, err := client.Do(req)
-		retry := ampt < o.RetryMaximum
-
-		if err != nil || resp.StatusCode != 200 {
-			log.Printf("[DEBUG] (%d) retrying request: (Attempt: %d/%d, URL: %q)", resp.StatusCode, ampt, o.RetryMaximum, err)
-			time.Sleep(30 * time.Second)
-		} else if resp.StatusCode == 429 {
-			log.Printf("[DEBUG] Rate limit hit (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
-			time.Sleep(45 * time.Second)
-		} else if resp.StatusCode != 200 {
-			log.Printf("[DEBUG] bad status code (%d) retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
-			time.Sleep(30 * time.Second)
-		}
-
-		limit, err := strconv.Atoi(resp.Header.Get("X-Rate-Limit-Limit"))
-		if err != nil {
-			return retry, err
-		}
-
-		remaining, err := strconv.Atoi(resp.Header.Get("X-Rate-Limit-Remaining"))
-		if err != nil {
-			return retry, err
-		}
-
-		ratio := (remaining * 100) / limit
-
-		if ratio < 50 {
-			log.Printf("[DEBUG] remaining retries to low, retrying request: (Attempt: %d/%d, URL: %s)", resp.StatusCode, ampt, o.RetryMaximum, url)
-			time.Sleep(55 * time.Second)
-		}
-
-		if !retry && resp.StatusCode == 429 {
-			return retry, fmt.Errorf("Rate limit prevented the completion of the request: %s", url)
-		}
-
-		return retry, err
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (o *OktaClient) RevokeProvisioningSettings(appID string) error {

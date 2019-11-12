@@ -4,8 +4,8 @@ import (
 	"fmt"
 )
 
-func NewHTTPSignature(key string) (map[string]interface{}, error) {
-	headers := make(map[string]interface{})
+func NewHTTPSignature(key string) (map[string]string, error) {
+	headers := make(map[string]string)
 
 	contentType := "application/json"
 

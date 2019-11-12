@@ -31,8 +31,18 @@ func main() {
 		return
 	}
 
-	fmt.Println("ID:\n", result.Application.ID)
-	fmt.Println("Name:\n", result.Application.Name)
-	fmt.Println("Label:\n", result.Application.Label)
-	fmt.Println("SignOnMode:\n", result.Application.SignOnMode)
+	fmt.Println("ID:\n", result.ID)
+	fmt.Println("KeyID:\n", result.Credentials.Signing.KeyID)
+
+	saml, err := client.GetSAML(result.ID, result.Credentials.Signing.KeyID)
+	if saml == "" {
+		fmt.Println("metadata could not be found:\n", appId)
+		return
+	}
+
+	if err != nil {
+		fmt.Println("err:\n", err)
+		return
+	}
+	fmt.Println("XML:", saml)
 }
