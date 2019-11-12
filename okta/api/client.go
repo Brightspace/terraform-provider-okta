@@ -367,7 +367,7 @@ func (o *Okta) ListAppMembers(appId string) ([]OktaUser, error) {
 	return *response, nil
 }
 
-func (o *Okta) AddAppMember(appId string, userId string, role string, roles []string) (string, error) {
+func (o *Okta) AddAppMember(appId string, userId string, role string, roles []string) (*OktaUser, error) {
 	restClient := o.GetRestClient()
 
 	url := fmt.Sprintf("/api/v1/apps/%s/users", appId)
@@ -382,16 +382,18 @@ func (o *Okta) AddAppMember(appId string, userId string, role string, roles []st
 
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	req := restClient.R().SetBody(string(body)).SetResult(&OktaUser{})
 
-	_, err = req.Post(url)
+	resp, err := req.Post(url)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	// result := resp.Result().(*OktaUser)
-	return "", nil
+	fmt.Println(resp)
+
+	result := resp.Result().(*OktaUser)
+	return result, nil
 }
