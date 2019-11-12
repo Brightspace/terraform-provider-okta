@@ -353,7 +353,6 @@ func (o *Okta) ListAppMembers(appId string) ([]OktaUser, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(resp)
 
 	status := resp.StatusCode()
 	if status == http.StatusNotFound {
