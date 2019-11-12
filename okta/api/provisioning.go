@@ -19,11 +19,9 @@ import (
 type OktaWebClient struct {
 	OktaURL      string
 	OktaAdminUrl string
-	APIKey       string
 	UserName     string
 	Password     string
 	OrgID        string
-	RetryMaximum int
 	RestClient   http.Client
 }
 

@@ -27,7 +27,7 @@ func main() {
 		fmt.Println("id could not be found:\n", appId)
 		return
 	}
-	
+
 	if err != nil {
 		fmt.Println("err:\n", err)
 		return

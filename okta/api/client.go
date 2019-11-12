@@ -14,11 +14,11 @@ const MaximumRetryWaitTimeInSeconds = 15 * time.Minute
 const RetryWaitTimeInSeconds = 30 * time.Second
 
 type OktaApplicationContents struct {
-	ID          string                  `json:"id"`
-	Name        string                  `json:"name"`
-	Label       string                  `json:"label"`
-	SignOnMode  string                  `json:"signOnMode"`
-	Settings    OktaApplicationSettings `json:"settings,omitempty"`
+	ID         string                  `json:"id"`
+	Name       string                  `json:"name"`
+	Label      string                  `json:"label"`
+	SignOnMode string                  `json:"signOnMode"`
+	Settings   OktaApplicationSettings `json:"settings,omitempty"`
 }
 
 type OktaApplication struct {
@@ -64,6 +64,9 @@ type OktaUser struct {
 		Role        string   `json:"role,omitempty"`
 		SamlRoles   []string `json:"samlRoles,omitempty"`
 	} `json:"profile,omitempty"`
+	Credentials struct {
+		UserName string `json:"userName,omitempty"`
+	} `json:"credentials,omitempty"`
 }
 
 type Okta struct {
@@ -344,24 +347,25 @@ func (o *Okta) ListAppMembers(appId string) ([]OktaUser, error) {
 	restClient := o.GetRestClient()
 
 	url := fmt.Sprintf("/api/v1/apps/%s/users?limit=%s", appId, resultsPerPage)
-	req := restClient.R().SetBody("").SetResult(&[]OktaUser{})
+	req := restClient.R().SetBody("").SetResult([]OktaUser{})
 
 	resp, err := req.Get(url)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(resp)
 
 	status := resp.StatusCode()
 	if status == http.StatusNotFound {
 		return nil, nil
 	}
 
-	response := resp.Result().([]OktaUser)
+	response := resp.Result().(*[]OktaUser)
 	if response == nil {
 		return nil, nil
 	}
 
-	return response, nil
+	return *response, nil
 }
 
 func (o *Okta) AddAppMember(appId string, userId string, role string, roles []string) (string, error) {
