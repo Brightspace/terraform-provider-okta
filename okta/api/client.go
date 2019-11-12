@@ -11,7 +11,6 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -118,31 +117,31 @@ func (o *Okta) CreateApplication(application Application) (*IdentifiedApplicatio
 }
 
 func (o *Okta) DeactivateApplication(appID string) error {
-	restClient := cloudability.GetRestClient()
+	restClient := o.GetRestClient()
 
 	url := fmt.Sprintf("/api/v1/apps/%s/lifecycle/deactivate", appID)
 	req := restClient.R().SetBody("")
 
 	_, err := req.Post(url)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	return true, nil
+	return nil
 }
 
 func (o *Okta) DeleteApplication(appID string) error {
-	restClient := cloudability.GetRestClient()
+	restClient := o.GetRestClient()
 
 	url := fmt.Sprintf("%s/api/v1/apps/%s", appID)
 	req := restClient.R().SetBody("")
 
 	_, err := req.Delete(url)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	return true, nil
+	return nil
 }
 
 func (o *Okta) GetSAMLMetadata(appID string, keyID string) (string, error) {
@@ -167,7 +166,7 @@ func (o *Okta) GetSAMLMetadata(appID string, keyID string) (string, error) {
 }
 
 func (o *Okta) UpdateApplication(application Application) (*Application, error) {
-	var result *IdentifiedApplication
+	var result *Application
 	restClient := o.GetRestClient()
 
 	body, err := json.Marshal(application)
@@ -176,14 +175,14 @@ func (o *Okta) UpdateApplication(application Application) (*Application, error) 
 	}
 
 	url := fmt.Sprintf("/api/v1/apps/%s", application.ID)
-	req := restClient.R().SetBody(string(body)).SetResult(&IdentifiedApplication{})
+	req := restClient.R().SetBody(string(body)).SetResult(&Application{})
 
 	resp, err := req.Put(url)
 	if err != nil {
 		return result, err
 	}
 
-	response := resp.Result().(*IdentifiedApplication)
+	response := resp.Result().(*Application)
 	return response, nil
 }
 
@@ -248,7 +247,7 @@ func (o *Okta) GetUserIDByEmail(user string) (string, error) {
 		return "", nil
 	}
 
-	result, err := resp.Result().([]*OktaUser)
+	result := resp.Result().([]*OktaUser)
 	for _, user := range result {
 		if strings.Contains(user.Profile.Login, "desire2learn.com") {
 			return user.ID, nil
@@ -282,9 +281,12 @@ type OktaAuthResponse struct {
 }
 
 type OktaAppUser struct {
-	ID      string               `json:"id,omitempty"`
-	Scope   string               `json:"scope,omitempty"`
-	Profile OktaGroupProfileSaml `json:"profile"`
+	ID      string `json:"id,omitempty"`
+	Scope   string `json:"scope,omitempty"`
+	Profile struct {
+		Role      string   `json:"role,omitempty"`
+		SamlRoles []string `json:"samlRoles,omitempty"`
+	} `json:"profile"`
 }
 
 type OktaUser struct {
@@ -458,11 +460,6 @@ func (o *OktaClient) RevokeProvisioningSettings(appID string) error {
 	cookieJar, _ := cookiejar.New(nil)
 	client.Jar = cookieJar
 
-	err := o.DelayRateLimit(appID)
-	if err != nil {
-		return err
-	}
-
 	authUrl := fmt.Sprintf(`%s/api/v1/authn`, o.OktaURL)
 	req, _ := http.NewRequest("POST", authUrl, strings.NewReader(authBody))
 	req.Header.Set("Content-Type", "application/json")
@@ -580,11 +577,6 @@ func (o *OktaClient) SetProvisioningSettings(appID string, oktaAWSKey string, ok
 
 	cookieJar, _ := cookiejar.New(nil)
 	client.Jar = cookieJar
-
-	err := o.DelayRateLimit(appID)
-	if err != nil {
-		return err
-	}
 
 	authUrl := fmt.Sprintf(`%s/api/v1/authn`, o.OktaURL)
 	req, _ := http.NewRequest("POST", authUrl, strings.NewReader(authBody))
