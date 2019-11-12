@@ -13,12 +13,16 @@ import (
 const MaximumRetryWaitTimeInSeconds = 15 * time.Minute
 const RetryWaitTimeInSeconds = 30 * time.Second
 
-type OktaApplication struct {
+type OktaApplicationContents struct {
 	ID          string                  `json:"id"`
 	Name        string                  `json:"name"`
 	Label       string                  `json:"label"`
 	SignOnMode  string                  `json:"signOnMode"`
 	Settings    OktaApplicationSettings `json:"settings,omitempty"`
+}
+
+type OktaApplication struct {
+	OktaApplicationContents
 	Credentials struct {
 		Signing struct {
 			KeyID string `json:"kid,omitempty"`
@@ -95,7 +99,7 @@ func (o *Okta) GetApplication(appID string) (*OktaApplication, error) {
 }
 
 func (o *Okta) CreateAwsApplication(name string, providerArn string) (*OktaApplication, error) {
-	application := OktaApplication{
+	application := OktaApplicationContents{
 		Name:       "amazon_aws",
 		Label:      name,
 		SignOnMode: "SAML_2_0",
@@ -113,7 +117,7 @@ func (o *Okta) CreateAwsApplication(name string, providerArn string) (*OktaAppli
 	return o.CreateApplication(application)
 }
 
-func (o *Okta) CreateApplication(application OktaApplication) (*OktaApplication, error) {
+func (o *Okta) CreateApplication(application OktaApplicationContents) (*OktaApplication, error) {
 	var result *OktaApplication
 	restClient := o.GetRestClient()
 
@@ -184,7 +188,7 @@ func (o *Okta) GetSAMLMetadata(appID string, keyID string) (string, error) {
 }
 
 func (o *Okta) UpdateAwsApplication(appId string, name string, providerArn string) (*OktaApplication, error) {
-	application := OktaApplication{
+	application := OktaApplicationContents{
 		ID:         appId,
 		Name:       "amazon_aws",
 		Label:      name,
@@ -203,7 +207,7 @@ func (o *Okta) UpdateAwsApplication(appId string, name string, providerArn strin
 	return o.UpdateApplication(application)
 }
 
-func (o *Okta) UpdateApplication(application OktaApplication) (*OktaApplication, error) {
+func (o *Okta) UpdateApplication(application OktaApplicationContents) (*OktaApplication, error) {
 	var result *OktaApplication
 	restClient := o.GetRestClient()
 
@@ -269,7 +273,6 @@ func (okta *Okta) GetRestClient() *resty.Client {
 }
 
 func (o *Okta) GetUserIDByEmail(user string) (string, error) {
-
 	restClient := o.GetRestClient()
 	url := fmt.Sprintf("/api/v1/users?q=%s", user)
 
@@ -340,7 +343,7 @@ func (o *Okta) ListAppMembers(appId string) ([]OktaUser, error) {
 	resultsPerPage := 500
 	restClient := o.GetRestClient()
 
-	url := fmt.Sprintf("%s/api/v1/apps/%s/users?limit=%s", appId, resultsPerPage)
+	url := fmt.Sprintf("/api/v1/apps/%s/users?limit=%s", appId, resultsPerPage)
 	req := restClient.R().SetBody("").SetResult(&[]OktaUser{})
 
 	resp, err := req.Get(url)
