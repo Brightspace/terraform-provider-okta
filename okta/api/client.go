@@ -113,6 +113,8 @@ func (o *Okta) CreateAwsApplication(name string, providerArn string) (*OktaAppli
 				JoinAllRoles:        false,
 				SessionDuration:     43200,
 				IdentityProviderArn: providerArn,
+				GroupFilter:         "aws_(?{{accountid}}\\d+)_(?{{role}}[a-zA-Z0-9+=,.@\\-_]+)",
+				RoleValuePattern:    "arn:aws:iam::${accountid}:saml-provider/OKTA,arn:aws:iam::${accountid}:role/${role}",
 			},
 		},
 	}
@@ -391,8 +393,6 @@ func (o *Okta) AddAppMember(appId string, userId string, role string, roles []st
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println(resp)
 
 	result := resp.Result().(*OktaUser)
 	return result, nil
