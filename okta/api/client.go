@@ -13,34 +13,53 @@ import (
 const MaximumRetryWaitTimeInSeconds = 15 * time.Minute
 const RetryWaitTimeInSeconds = 30 * time.Second
 
-type Application struct {
-	ID         string   `json:"id"`
-	Name       string   `json:"name"`
-	Label      string   `json:"label"`
-	Features   []string `json:"features"`
-	SignOnMode string   `json:"signOnMode"`
-	Settings   struct {
-		App struct {
-			AwsEnvironmentType  string `json:"awsEnvironmentType"`
-			GroupFilter         string `json:"groupFilter"`
-			LoginURL            string `json:"loginUrl"`
-			JoinAllRoles        bool   `json:"joinAllRoles"`
-			SessionDuration     int    `json:"sessionDuration"`
-			RoleValuePattern    string `json:"roleValuePattern"`
-			IdentityProviderArn string `json:"identityProviderArn"`
-			AccessKey           string `json:"accessKey"`
-			SecretKey           string `json:"secretKey"`
-		} `json:"app"`
-	} `json:"settings"`
-}
-
-type IdentifiedApplication struct {
-	Application
+type OktaApplication struct {
+	ID          string                  `json:"id"`
+	Name        string                  `json:"name"`
+	Label       string                  `json:"label"`
+	SignOnMode  string                  `json:"signOnMode"`
+	Settings    OktaApplicationSettings `json:"settings,omitempty"`
 	Credentials struct {
 		Signing struct {
-			KeyID string `json:"kid"`
-		} `json:"signing"`
-	} `json:"credentials"`
+			KeyID string `json:"kid,omitempty"`
+		} `json:"signing,omitempty"`
+	} `json:"credentials,omitempty"`
+}
+
+type OktaApplicationSettings struct {
+	App OktaApplicationAppSettings `json:"app,omitempty"`
+}
+
+type OktaApplicationAppSettings struct {
+	AwsEnvironmentType  string `json:"awsEnvironmentType,omitempty"`
+	GroupFilter         string `json:"groupFilter,omitempty"`
+	LoginURL            string `json:"loginUrl,omitempty"`
+	JoinAllRoles        bool   `json:"joinAllRoles,omitempty"`
+	SessionDuration     int    `json:"sessionDuration,omitempty"`
+	RoleValuePattern    string `json:"roleValuePattern,omitempty"`
+	IdentityProviderArn string `json:"identityProviderArn,omitempty"`
+}
+
+type OktaUser struct {
+	ID              string     `json:"id"`
+	Status          string     `json:"status"`
+	Created         *time.Time `json:"created,omitempty"`
+	Activated       *time.Time `json:"activated,omitempty"`
+	StatusChanged   *time.Time `json:"statusChanged,omitempty"`
+	LastLogin       *time.Time `json:"lastLogin,omitempty"`
+	LastUpdated     *time.Time `json:"lastUpdated,omitempty"`
+	PasswordChanged *time.Time `json:"passwordChanged,omitempty"`
+	Profile         struct {
+		Login       string   `json:"login,omitempty"`
+		FirstName   string   `json:"firstName,omitempty"`
+		LastName    string   `json:"lastName,omitempty"`
+		NickName    string   `json:"nickName,omitempty"`
+		DisplayName string   `json:"displayName,omitempty"`
+		Email       string   `json:"email,omitempty"`
+		SecondEmail string   `json:"secondEmail,omitempty"`
+		Role        string   `json:"role,omitempty"`
+		SamlRoles   []string `json:"samlRoles,omitempty"`
+	} `json:"profile,omitempty"`
 }
 
 type Okta struct {
@@ -51,11 +70,11 @@ type Okta struct {
 	RestClient   *resty.Client
 }
 
-func (o *Okta) GetApplication(appID string) (*IdentifiedApplication, error) {
+func (o *Okta) GetApplication(appID string) (*OktaApplication, error) {
 	restClient := o.GetRestClient()
 
 	url := fmt.Sprintf("/api/v1/apps/%s", appID)
-	req := restClient.R().SetBody("").SetResult(&IdentifiedApplication{})
+	req := restClient.R().SetBody("").SetResult(&OktaApplication{})
 
 	resp, err := req.Get(url)
 	if err != nil {
@@ -67,7 +86,7 @@ func (o *Okta) GetApplication(appID string) (*IdentifiedApplication, error) {
 		return nil, nil
 	}
 
-	response := resp.Result().(*IdentifiedApplication)
+	response := resp.Result().(*OktaApplication)
 	if response == nil {
 		return nil, nil
 	}
@@ -75,8 +94,27 @@ func (o *Okta) GetApplication(appID string) (*IdentifiedApplication, error) {
 	return response, nil
 }
 
-func (o *Okta) CreateApplication(application Application) (*IdentifiedApplication, error) {
-	var result *IdentifiedApplication
+func (o *Okta) CreateAwsApplication(name string, providerArn string) (*OktaApplication, error) {
+	application := OktaApplication{
+		Name:       "amazon_aws",
+		Label:      name,
+		SignOnMode: "SAML_2_0",
+		Settings: OktaApplicationSettings{
+			App: OktaApplicationAppSettings{
+				AwsEnvironmentType:  "aws.amazon",
+				LoginURL:            "https://console.aws.amazon.com/ec2/home",
+				JoinAllRoles:        false,
+				SessionDuration:     43200,
+				IdentityProviderArn: providerArn,
+			},
+		},
+	}
+
+	return o.CreateApplication(application)
+}
+
+func (o *Okta) CreateApplication(application OktaApplication) (*OktaApplication, error) {
+	var result *OktaApplication
 	restClient := o.GetRestClient()
 
 	body, err := json.Marshal(application)
@@ -85,14 +123,14 @@ func (o *Okta) CreateApplication(application Application) (*IdentifiedApplicatio
 	}
 
 	url := "/api/v1/apps"
-	req := restClient.R().SetBody(string(body)).SetResult(&IdentifiedApplication{})
+	req := restClient.R().SetBody(string(body)).SetResult(&OktaApplication{})
 
 	resp, err := req.Post(url)
 	if err != nil {
 		return result, err
 	}
 
-	response := resp.Result().(*IdentifiedApplication)
+	response := resp.Result().(*OktaApplication)
 	return response, nil
 }
 
@@ -113,7 +151,7 @@ func (o *Okta) DeactivateApplication(appID string) error {
 func (o *Okta) DeleteApplication(appID string) error {
 	restClient := o.GetRestClient()
 
-	url := fmt.Sprintf("%s/api/v1/apps/%s", appID)
+	url := fmt.Sprintf("api/v1/apps/%s", appID)
 	req := restClient.R().SetBody("")
 
 	_, err := req.Delete(url)
@@ -145,8 +183,28 @@ func (o *Okta) GetSAMLMetadata(appID string, keyID string) (string, error) {
 	return response, nil
 }
 
-func (o *Okta) UpdateApplication(application Application) (*Application, error) {
-	var result *Application
+func (o *Okta) UpdateAwsApplication(appId string, name string, providerArn string) (*OktaApplication, error) {
+	application := OktaApplication{
+		ID:         appId,
+		Name:       "amazon_aws",
+		Label:      name,
+		SignOnMode: "SAML_2_0",
+		Settings: OktaApplicationSettings{
+			App: OktaApplicationAppSettings{
+				AwsEnvironmentType:  "aws.amazon",
+				LoginURL:            "https://console.aws.amazon.com/ec2/home",
+				JoinAllRoles:        false,
+				SessionDuration:     43200,
+				IdentityProviderArn: providerArn,
+			},
+		},
+	}
+
+	return o.UpdateApplication(application)
+}
+
+func (o *Okta) UpdateApplication(application OktaApplication) (*OktaApplication, error) {
+	var result *OktaApplication
 	restClient := o.GetRestClient()
 
 	body, err := json.Marshal(application)
@@ -155,14 +213,14 @@ func (o *Okta) UpdateApplication(application Application) (*Application, error) 
 	}
 
 	url := fmt.Sprintf("/api/v1/apps/%s", application.ID)
-	req := restClient.R().SetBody(string(body)).SetResult(&Application{})
+	req := restClient.R().SetBody(string(body)).SetResult(&OktaApplication{})
 
 	resp, err := req.Put(url)
 	if err != nil {
 		return result, err
 	}
 
-	response := resp.Result().(*Application)
+	response := resp.Result().(*OktaApplication)
 	return response, nil
 }
 
@@ -237,30 +295,6 @@ func (o *Okta) GetUserIDByEmail(user string) (string, error) {
 	return "", nil
 }
 
-type OktaUser struct {
-	ID              string          `json:"id"`
-	Status          string          `json:"status"`
-	Created         *time.Time      `json:"created,omitempty"`
-	Activated       *time.Time      `json:"activated,omitempty"`
-	StatusChanged   *time.Time      `json:"statusChanged,omitempty"`
-	LastLogin       *time.Time      `json:"lastLogin,omitempty"`
-	LastUpdated     *time.Time      `json:"lastUpdated,omitempty"`
-	PasswordChanged *time.Time      `json:"passwordChanged,omitempty"`
-	Profile         OktaUserProfile `json:"profile,omitempty"`
-}
-
-type OktaUserProfile struct {
-	Login       string   `json:"login,omitempty"`
-	FirstName   string   `json:"firstName,omitempty"`
-	LastName    string   `json:"lastName,omitempty"`
-	NickName    string   `json:"nickName,omitempty"`
-	DisplayName string   `json:"displayName,omitempty"`
-	Email       string   `json:"email,omitempty"`
-	SecondEmail string   `json:"secondEmail,omitempty"`
-	Role        string   `json:"role,omitempty"`
-	SamlRoles   []string `json:"samlRoles,omitempty"`
-}
-
 func (o *Okta) RemoveAppMember(appId string, userId string) error {
 	restClient := o.GetRestClient()
 
@@ -300,6 +334,9 @@ func (o *Okta) GetAppMember(appId string, userId string) (*OktaUser, error) {
 }
 
 func (o *Okta) ListAppMembers(appId string) ([]OktaUser, error) {
+	// I've set the results per page to 500, but if the organization needs
+	// more than that this will need pagination enabled.
+	// TODO: Add pagination for listing app members
 	resultsPerPage := 500
 	restClient := o.GetRestClient()
 

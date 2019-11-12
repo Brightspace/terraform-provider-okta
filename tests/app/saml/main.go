@@ -20,7 +20,7 @@ func main() {
 		RetryMaximum: 5,
 	}
 
-	result, err := client.GetApp(appId)
+	result, err := client.GetApplication(appId)
 	if result == nil {
 		fmt.Println("id could not be found:\n", appId)
 		return
@@ -34,7 +34,7 @@ func main() {
 	fmt.Println("ID:\n", result.ID)
 	fmt.Println("KeyID:\n", result.Credentials.Signing.KeyID)
 
-	saml, err := client.GetSAML(result.ID, result.Credentials.Signing.KeyID)
+	saml, err := client.GetSAMLMetadata(result.ID, result.Credentials.Signing.KeyID)
 	if saml == "" {
 		fmt.Println("metadata could not be found:\n", appId)
 		return

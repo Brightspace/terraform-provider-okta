@@ -5,7 +5,6 @@ import (
 	"github.com/Brightspace/terraform-provider-okta/okta/api"
 	"log"
 	"os"
-	"strings"
 )
 
 func main() {
@@ -13,7 +12,6 @@ func main() {
 		log.Fatal("Missing ID for evident resource")
 	}
 	appId := os.Args[1]
-	counter := 100
 
 	client := api.Okta{
 		APIKey:       os.Getenv("OKTA_API_KEY"),
@@ -22,7 +20,7 @@ func main() {
 		RetryMaximum: 5,
 	}
 
-	result, err := client.GetApp(appId)
+	result, err := client.GetApplication(appId)
 	if result == nil {
 		fmt.Println("id could not be found:\n", appId)
 		return
@@ -34,16 +32,8 @@ func main() {
 	}
 
 	fmt.Println("ID:\n", result.ID)
-	fmt.Println("KeyID:\n", result.Credentials.Signing.KeyID)
-
-	for i := 0; i < counter; i++ {
-		samlMetaData, err := client.GetSAMLMetadata(result.ID, result.Credentials.Signing.KeyID)
-		if err != nil {
-			fmt.Println("Encountered an error:\n", err)
-		} else if samlMetaData == "" {
-			fmt.Println("nothing returned")
-		} else if strings.Contains(samlMetaData, "E0000047") {
-			fmt.Println("Rate limit hit:\n", i)
-		}
-	}
+	fmt.Println("Name:\n", result.Name)
+	fmt.Println("Label:\n", result.Label)
+	fmt.Println("SignOnMode:\n", result.SignOnMode)
+	fmt.Println("Signing.KeyID:\n", result.Credentials.Signing.KeyID)
 }
