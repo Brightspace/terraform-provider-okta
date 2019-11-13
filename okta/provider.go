@@ -44,7 +44,7 @@ func Provider() terraform.ResourceProvider {
 			"org_id": &schema.Schema{
 				Type:        schema.TypeString,
 				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("OKTA_ORGID", nil),
+				DefaultFunc: schema.EnvDefaultFunc("OKTA_ORG_ID", nil),
 				Description: "Okta ID for organization",
 			},
 		},
@@ -52,6 +52,9 @@ func Provider() terraform.ResourceProvider {
 			"okta_app":             resourceApp(),
 			"okta_user_attachment": resourceAppUserAttachment(),
 			"okta_app_users":       resourceAppUsers(),
+		},
+		DataSourcesMap: map[string]*schema.Resource{
+			"okta_app_saml": dataSourceAppSaml(),
 		},
 		ConfigureFunc: configureProvider,
 	}

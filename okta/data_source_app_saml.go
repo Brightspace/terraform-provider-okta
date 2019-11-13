@@ -18,7 +18,7 @@ func dataSourceAppSaml() *schema.Resource {
 				Description: "The unique identifier of the application",
 				ForceNew:    true,
 			},
-			"saml_metadata": &schema.Schema{
+			"saml_metadata_document": &schema.Schema{
 				Type:        schema.TypeString,
 				Computed:    true,
 				Description: "The SAML metadata",
@@ -54,7 +54,7 @@ func dataSourceAppSamlRead(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	d.SetId(app.ID)
-	d.Set("saml_metadata", saml)
+	d.Set("saml_metadata_document", saml)
 
 	return nil
 }
