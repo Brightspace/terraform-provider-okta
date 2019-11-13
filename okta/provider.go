@@ -44,14 +44,20 @@ func Provider() terraform.ResourceProvider {
 			"org_id": &schema.Schema{
 				Type:        schema.TypeString,
 				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("OKTA_ORGID", nil),
+				DefaultFunc: schema.EnvDefaultFunc("OKTA_ORG_ID", nil),
 				Description: "Okta ID for organization",
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"okta_app":             resourceApp(),
-			"okta_user_attachment": resourceAppUserAttachment(),
-			"okta_app_users":       resourceAppUsers(),
+			"okta_app":                     resourceApp(),
+			"okta_user_attachment":         resourceAppUserAttachment(),
+			"okta_app_users":               resourceAppUsers(),
+			"okta_app_aws":                 resourceAppAws(),
+			"okta_app_aws_provision":       resourceAppAwsProvision(),
+			"okta_app_aws_user_attachment": resourceAppUserAttachment(),
+		},
+		DataSourcesMap: map[string]*schema.Resource{
+			"okta_app_saml": dataSourceAppSaml(),
 		},
 		ConfigureFunc: configureProvider,
 	}
@@ -68,7 +74,9 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 		RetryMaximum: 25,
 	}
 
-	client := NewClient(&config)
+	okta, web := NewClient(&config)
+	config.Okta = okta
+	config.Web = web
 
-	return client, nil
+	return config, nil
 }

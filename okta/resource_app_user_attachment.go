@@ -1,9 +1,8 @@
 package okta
 
 import (
-	"log"
-
 	"github.com/hashicorp/terraform/helper/schema"
+	"log"
 )
 
 func resourceAppUserAttachment() *schema.Resource {
@@ -24,6 +23,12 @@ func resourceAppUserAttachment() *schema.Resource {
 				ForceNew: true,
 				Required: true,
 			},
+			"domain": &schema.Schema{
+				Type:     schema.TypeString,
+				ForceNew: true,
+				Optional: true,
+				Default:  "",
+			},
 			"app_id": &schema.Schema{
 				Type:     schema.TypeString,
 				ForceNew: true,
@@ -41,21 +46,25 @@ func resourceAppUserAttachment() *schema.Resource {
 }
 
 func resourceAppUserAttachmentCreate(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	config := m.(Config)
+	client := config.Okta
+
 	app_id := d.Get("app_id").(string)
 	role := d.Get("role").(string)
+	user := d.Get("user").(string)
+	domain := d.Get("domain").(string)
 	saml_roles := d.Get("saml_roles").([]interface{})
 	roles := make([]string, len(saml_roles))
 	for i, value := range saml_roles {
 		roles[i] = value.(string)
 	}
 
-	user_id, err := client.GetUserIDByEmail(d.Get("user").(string))
+	user_id, err := client.GetUserIDByEmail(user, domain)
 	if err != nil {
 		return err
 	}
 
-	_, err = client.AddMemberToApp(app_id, user_id, role, roles)
+	_, err = client.AddAppMember(app_id, user_id, role, roles)
 	if err != nil {
 		return err
 	}
@@ -66,7 +75,9 @@ func resourceAppUserAttachmentCreate(d *schema.ResourceData, m interface{}) erro
 }
 
 func resourceAppUserAttachmentUpdate(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	config := m.(Config)
+	client := config.Okta
+
 	app_id := d.Get("app_id").(string)
 	role := d.Get("role").(string)
 	saml_roles := d.Get("saml_roles").([]interface{})
@@ -75,7 +86,7 @@ func resourceAppUserAttachmentUpdate(d *schema.ResourceData, m interface{}) erro
 		roles[i] = value.(string)
 	}
 
-	_, err := client.AddMemberToApp(app_id, d.Id(), role, roles)
+	_, err := client.AddAppMember(app_id, d.Id(), role, roles)
 	if err != nil {
 		return err
 	}
@@ -84,10 +95,11 @@ func resourceAppUserAttachmentUpdate(d *schema.ResourceData, m interface{}) erro
 }
 
 func resourceAppUserAttachmentRead(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	config := m.(Config)
+	client := config.Okta
 
 	member, err := client.GetAppMember(d.Get("app_id").(string), d.Id())
-	if err != nil {
+	if err != nil || member == nil {
 		log.Printf("[WARN] User (%s) in app (%s) not found, removing from state", d.Id(), d.Get("app_id").(string))
 		d.SetId("")
 		return nil
@@ -105,9 +117,10 @@ func resourceAppUserAttachmentRead(d *schema.ResourceData, m interface{}) error 
 }
 
 func resourceAppUserAttachmentDelete(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	config := m.(Config)
+	client := config.Okta
 
-	err := client.RemoveMemberFromApp(d.Get("app_id").(string), d.Id())
+	err := client.RemoveAppMember(d.Get("app_id").(string), d.Id())
 	if err != nil {
 		return err
 	}

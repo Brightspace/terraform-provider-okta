@@ -8,41 +8,6 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
-type Settings struct {
-	App AppSettings `json:"app"`
-}
-
-type Application struct {
-	ID         string   `json:"id"`
-	Name       string   `json:"name"`
-	Label      string   `json:"label"`
-	SignOnMode string   `json:"signOnMode"`
-	Settings   Settings `json:"settings"`
-}
-
-type AppSettings struct {
-	AwsEnvironmentType  string `json:"awsEnvironmentType"`
-	GroupFilter         string `json:"groupFilter"`
-	LoginURL            string `json:"loginUrl"`
-	JoinAllRoles        bool   `json:"joinAllRoles"`
-	SessionDuration     int    `json:"sessionDuration"`
-	RoleValuePattern    string `json:"roleValuePattern"`
-	IdentityProviderArn string `json:"identityProviderArn"`
-}
-
-type IdentifiedApplication struct {
-	Application
-	Credentials Credentials `json:"credentials"`
-}
-
-type Credentials struct {
-	Signing Signing `json:"signing"`
-}
-
-type Signing struct {
-	KeyID string `json:"kid"`
-}
-
 func resourceApp() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceAppCreate,
@@ -114,33 +79,21 @@ func resourceApp() *schema.Resource {
 }
 
 func resourceAppCreate(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	config := m.(Config)
+	client := config.Okta
+	web := config.Web
 	awsKey := d.Get("aws_okta_iam_user_id").(string)
 	awsSecret := d.Get("aws_okta_iam_user_secret").(string)
 
-	application := Application{
-		Name:       d.Get("name").(string),
-		Label:      d.Get("label").(string),
-		SignOnMode: d.Get("sign_on_mode").(string),
-		Settings: Settings{
-			App: AppSettings{
-				AwsEnvironmentType:  d.Get("aws_environment_type").(string),
-				GroupFilter:         d.Get("group_filter").(string),
-				LoginURL:            d.Get("login_url").(string),
-				JoinAllRoles:        d.Get("join_all_roles").(bool),
-				SessionDuration:     d.Get("session_duration").(int),
-				RoleValuePattern:    d.Get("role_value_pattern").(string),
-				IdentityProviderArn: d.Get("identity_provider_arn").(string),
-			},
-		},
-	}
+	name := d.Get("label").(string)
+	identityArn := d.Get("identity_provider_arn").(string)
 
-	createdApplication, err := client.CreateApplication(application)
+	createdApplication, err := client.CreateAwsApplication(name, identityArn)
 	if err != nil {
 		return err
 	}
 
-	samlMetadataDocument, err := client.GetSAMLMetaData(createdApplication.ID, createdApplication.Credentials.Signing.KeyID)
+	samlMetadataDocument, err := client.GetSAMLMetadata(createdApplication.ID, createdApplication.Credentials.Signing.KeyID)
 	if err != nil {
 		return err
 	}
@@ -149,7 +102,7 @@ func resourceAppCreate(d *schema.ResourceData, m interface{}) error {
 		return fmt.Errorf("Request for SAML returned nothing from app %s", createdApplication.ID)
 	}
 
-	provisionErr := client.SetProvisioningSettings(createdApplication.ID, awsKey, awsSecret)
+	provisionErr := web.SetAWSProvisioning(createdApplication.ID, awsKey, awsSecret)
 	if provisionErr != nil {
 		return provisionErr
 	}
@@ -162,21 +115,22 @@ func resourceAppCreate(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceAppRead(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	config := m.(Config)
+	client := config.Okta
 	appID := d.Id()
 
-	readApplication, applicationRemoved, err := client.ReadApplication(appID)
+	readApplication, err := client.GetApplication(appID)
 	if err != nil {
 		return err
 	}
 
-	if applicationRemoved == true {
+	if readApplication == nil {
 		log.Printf("[WARN] Okta Application %s (%q) not found, removing from state", d.Get("label").(string), d.Id())
 		d.SetId("")
 		return nil
 	}
 
-	samlMetadataDocument, err := client.GetSAMLMetaData(appID, readApplication.Credentials.Signing.KeyID)
+	samlMetadataDocument, err := client.GetSAMLMetadata(appID, readApplication.Credentials.Signing.KeyID)
 	if err != nil {
 		return err
 	}
@@ -198,41 +152,29 @@ func resourceAppRead(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceAppUpdate(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	config := m.(Config)
+	client := config.Okta
+	web := config.Web
+
 	awsKey := d.Get("aws_okta_iam_user_id").(string)
 	awsSecret := d.Get("aws_okta_iam_user_secret").(string)
 
-	application := Application{
-		ID:         d.Id(),
-		Name:       d.Get("name").(string),
-		Label:      d.Get("label").(string),
-		SignOnMode: d.Get("sign_on_mode").(string),
-		Settings: Settings{
-			App: AppSettings{
-				AwsEnvironmentType:  d.Get("aws_environment_type").(string),
-				GroupFilter:         d.Get("group_filter").(string),
-				LoginURL:            d.Get("login_url").(string),
-				JoinAllRoles:        d.Get("join_all_roles").(bool),
-				SessionDuration:     d.Get("session_duration").(int),
-				RoleValuePattern:    d.Get("role_value_pattern").(string),
-				IdentityProviderArn: d.Get("identity_provider_arn").(string),
-			},
-		},
-	}
+	name := d.Get("label").(string)
+	identityArn := d.Get("identity_provider_arn").(string)
 
-	updatedApplication, err := client.UpdateApplication(application)
+	updatedApplication, err := client.UpdateAwsApplication(d.Id(), name, identityArn)
 	if err != nil {
 		return err
 	}
 
-	err = client.RevokeProvisioningSettings(updatedApplication.ID)
+	err = web.RevokeAWSProvisioning(updatedApplication.ID)
 	if err != nil {
 		return err
 	}
 
 	time.Sleep(15 * time.Second)
 
-	err = client.SetProvisioningSettings(updatedApplication.ID, awsKey, awsSecret)
+	err = web.SetAWSProvisioning(updatedApplication.ID, awsKey, awsSecret)
 	if err != nil {
 		return err
 	}
@@ -245,7 +187,8 @@ func resourceAppUpdate(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceAppDelete(d *schema.ResourceData, m interface{}) error {
-	client := m.(OktaClient)
+	config := m.(Config)
+	client := config.Okta
 	appID := d.Id()
 
 	err := client.DeleteApplication(appID)
