@@ -17,7 +17,7 @@ func main() {
 
 	client := api.Okta{
 		APIKey:       os.Getenv("OKTA_API_KEY"),
-		HostURL:      os.Getenv("OKTA_HOST_URL"),
+		HostURL:      os.Getenv("OKTA_URL"),
 		OrgID:        os.Getenv("OKTA_ORG_ID"),
 		RetryMaximum: 5,
 	}

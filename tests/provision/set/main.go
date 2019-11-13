@@ -17,7 +17,7 @@ func main() {
 		UserName: os.Getenv("OKTA_USERNAME"),
 		Password: os.Getenv("OKTA_PASSWORD"),
 		AdminURL: os.Getenv("OKTA_ADMIN_URL"),
-		HostURL:  os.Getenv("OKTA_HOST_URL"),
+		HostURL:  os.Getenv("OKTA_URL"),
 		OrgID:    os.Getenv("OKTA_ORG_ID"),
 	}
 	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
