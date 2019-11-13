@@ -23,6 +23,12 @@ func resourceAppUserAttachment() *schema.Resource {
 				ForceNew: true,
 				Required: true,
 			},
+			"domain": &schema.Schema{
+				Type:     schema.TypeString,
+				ForceNew: true,
+				Optional: true,
+				Default:  "",
+			},
 			"app_id": &schema.Schema{
 				Type:     schema.TypeString,
 				ForceNew: true,
@@ -45,13 +51,15 @@ func resourceAppUserAttachmentCreate(d *schema.ResourceData, m interface{}) erro
 
 	app_id := d.Get("app_id").(string)
 	role := d.Get("role").(string)
+	user := d.Get("user").(string)
+	domain := d.Get("domain").(string)
 	saml_roles := d.Get("saml_roles").([]interface{})
 	roles := make([]string, len(saml_roles))
 	for i, value := range saml_roles {
 		roles[i] = value.(string)
 	}
 
-	user_id, err := client.GetUserIDByEmail(d.Get("user").(string))
+	user_id, err := client.GetUserIDByEmail(user, domain)
 	if err != nil {
 		return err
 	}
@@ -91,7 +99,7 @@ func resourceAppUserAttachmentRead(d *schema.ResourceData, m interface{}) error 
 	client := config.Okta
 
 	member, err := client.GetAppMember(d.Get("app_id").(string), d.Id())
-	if err != nil {
+	if err != nil || member == nil {
 		log.Printf("[WARN] User (%s) in app (%s) not found, removing from state", d.Id(), d.Get("app_id").(string))
 		d.SetId("")
 		return nil

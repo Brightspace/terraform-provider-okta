@@ -17,6 +17,7 @@ type OktaApplicationContents struct {
 	ID         string                  `json:"id"`
 	Name       string                  `json:"name"`
 	Label      string                  `json:"label"`
+	Features   []string                `json:"features"`
 	SignOnMode string                  `json:"signOnMode"`
 	Settings   OktaApplicationSettings `json:"settings,omitempty"`
 }
@@ -64,9 +65,6 @@ type OktaUser struct {
 		Role        string   `json:"role,omitempty"`
 		SamlRoles   []string `json:"samlRoles,omitempty"`
 	} `json:"profile,omitempty"`
-	Credentials struct {
-		UserName string `json:"userName,omitempty"`
-	} `json:"credentials,omitempty"`
 }
 
 type Okta struct {
@@ -277,7 +275,7 @@ func (okta *Okta) GetRestClient() *resty.Client {
 	return okta.RestClient
 }
 
-func (o *Okta) GetUserIDByEmail(user string) (string, error) {
+func (o *Okta) GetUserIDByEmail(user string, domain string) (string, error) {
 	restClient := o.GetRestClient()
 	url := fmt.Sprintf("/api/v1/users?q=%s", user)
 
@@ -293,9 +291,11 @@ func (o *Okta) GetUserIDByEmail(user string) (string, error) {
 		return "", nil
 	}
 
-	result := resp.Result().([]OktaUser)
-	for _, user := range result {
-		if strings.Contains(user.Profile.Login, "desire2learn.com") {
+	result := resp.Result().(*[]OktaUser)
+	for _, user := range *result {
+		if domain == "" {
+			return user.ID, nil
+		} else if strings.Contains(user.Profile.Login, domain) {
 			return user.ID, nil
 		}
 	}

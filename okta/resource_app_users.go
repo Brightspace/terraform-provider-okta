@@ -234,7 +234,7 @@ func resourceAppUsersCreate(d *schema.ResourceData, m interface{}) error {
 	var ids []string
 
 	for user, roles := range saml_mapping {
-		user_id, err := client.GetUserIDByEmail(user)
+		user_id, err := client.GetUserIDByEmail(user, "desire2learn.com")
 		if err != nil {
 			return err
 		}
@@ -263,7 +263,7 @@ func resourceAppUsersUpdate(d *schema.ResourceData, m interface{}) error {
 	ids := make(map[string]bool)
 
 	for user, roles := range saml_mapping {
-		user_id, err := client.GetUserIDByEmail(user)
+		user_id, err := client.GetUserIDByEmail(user, "desire2learn.com")
 		if err != nil {
 			return err
 		}
