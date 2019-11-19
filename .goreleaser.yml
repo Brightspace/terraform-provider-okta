@@ -23,6 +23,7 @@ release:
   prerelease: auto
   name_template: "v{{.Version}}"
 
+# Deploy to AWS S3 (D2L's Terraform Registry : TfReg)
 blobs:
 -
   provider: s3
