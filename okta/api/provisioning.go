@@ -34,7 +34,7 @@ func doRequest(client http.Client, request *http.Request) (*http.Response, error
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return resp, fmt.Errorf("Provisioning did not yield successful %s", resp.StatusCode)
+		return resp, fmt.Errorf("Provisioning did not yield successful %d", resp.StatusCode)
 	}
 
 	return resp, nil
