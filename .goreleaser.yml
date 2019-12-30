@@ -12,6 +12,9 @@ builds:
     - windows
   goarch:
   - amd64
+archives:
+-
+  format: zip
 checksum:
   name_template: 'checksums.txt'
 changelog:
@@ -23,9 +26,8 @@ release:
   prerelease: auto
   name_template: "v{{.Version}}"
 
-# Deploy to AWS S3 (D2L's Terraform Registry : TfReg)
-blobs:
+s3:
 -
-  provider: s3
   bucket: tfreg
   folder: "ace/providers/{{.ProjectName}}/{{.Version}}"
+  region: "us-east-1"
