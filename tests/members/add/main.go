@@ -33,6 +33,6 @@ func main() {
 	result, _ := client.ListAppMembers(appId)
 	for _, element := range result {
 		fmt.Println("ID:\n", element.ID)
-		fmt.Println("Username:\n", element.Credentials.UserName)
+		fmt.Println("Username:\n", element.Profile.Email)
 	}
 }
