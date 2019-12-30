@@ -348,7 +348,7 @@ func (o *Okta) ListAppMembers(appId string) ([]OktaUser, error) {
 	resultsPerPage := 500
 	restClient := o.GetRestClient()
 
-	url := fmt.Sprintf("/api/v1/apps/%s/users?limit=%s", appId, resultsPerPage)
+	url := fmt.Sprintf("/api/v1/apps/%s/users?limit=%d", appId, resultsPerPage)
 	req := restClient.R().SetBody("").SetResult([]OktaUser{})
 
 	resp, err := req.Get(url)
