@@ -49,9 +49,6 @@ func Provider() terraform.ResourceProvider {
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"okta_app":                     resourceApp(),
-			"okta_user_attachment":         resourceAppUserAttachment(),
-			"okta_app_users":               resourceAppUsers(),
 			"okta_app_aws":                 resourceAppAws(),
 			"okta_app_aws_provision":       resourceAppAwsProvision(),
 			"okta_app_aws_user_attachment": resourceAppUserAttachment(),
