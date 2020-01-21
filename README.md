@@ -1,4 +1,4 @@
-Terraform Provider
+Okta Terraform Provider
 ==================
 
 - Website: https://www.terraform.io
