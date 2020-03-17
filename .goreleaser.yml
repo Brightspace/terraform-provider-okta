@@ -26,8 +26,9 @@ release:
   prerelease: auto
   name_template: "v{{.Version}}"
 
-s3:
+blobs:
 -
+  provider: s3
   bucket: tfreg
   folder: "ace/providers/{{.ProjectName}}/{{.Version}}"
   region: "us-east-1"
