@@ -297,8 +297,6 @@ func (o *Okta) GetUserIDByEmail(user string, domain string) (string, error) {
 			return user.ID, nil
 		} else if strings.Contains(user.Profile.Login, domain) {
 			return user.ID, nil
-		} else if strings.HasPrefix(user.Profile.Login, "svc_") {
-			return user.ID, nil
 		}
 	}
 
