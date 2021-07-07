@@ -162,7 +162,7 @@ func (o *OktaWebClient) configureAWSProvisioning(appID string, accessKey string,
 }
 
 func (o *OktaWebClient) RevokeAWSProvisioning(appID string) error {
-	return o.configureAWSProvisioning(appID, "", "")
+	return nil
 }
 
 func (o *OktaWebClient) SetAWSProvisioning(appID string, accessKey string, secretKey string) error {
