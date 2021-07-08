@@ -93,38 +93,46 @@ func (o *OktaWebClient) configureAWSProvisioning(appID string, accessKey string,
 	}
 
 	// ---------------
-	oneUrl := fmt.Sprintf("%s/home/saasure/%s", o.HostURL, o.OrgID)
-	req4, _ := http.NewRequest("GET", oneUrl, nil)
+	adminEntryUrl := fmt.Sprintf("%s/home/admin-entry", o.HostURL)
+	req4, _ := http.NewRequest("GET", adminEntryUrl, nil)
 	req4.Header.Set("Content-Type", "application/json")
 	req4.Header.Set("Accept", "application/json")
 
-	oneResp, err := doRequest(client, req4)
+	_, err = doRequest(client, req4)
 	if err != nil {
-		log.Println("[ERROR] AWS provisioning: Failed to GET to saasure route....")
-		log.Println(oneUrl)
+		log.Println("[ERROR] AWS provisioning: Failed to GET to admin-entry route....")
+		log.Println(adminEntryUrl)
 		return err
 	}
-
-	ssoToken := getSsoToken(oneResp.Body)
-	defer oneResp.Body.Close()
 
 	// ---------------
-	adminSsoUrl := fmt.Sprintf("%s/admin/sso/request", o.AdminURL)
-	postData := url.Values{}
-	postData.Add("token", ssoToken)
-	req5, _ := http.NewRequest("POST", adminSsoUrl, strings.NewReader(postData.Encode()))
-	req5.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	adminSsoUrl := fmt.Sprintf("%s/admin/sso/oidc-entry", o.AdminURL)
+	req5, _ := http.NewRequest("GET", adminSsoUrl, nil)
+	req5.Header.Set("Content-Type", "application/json")
 	req5.Header.Set("Accept", "application/json")
 
-	ssoResp, err := doRequest(client, req5)
+	_, err = doRequest(client, req5)
 	if err != nil {
-		log.Println("[ERROR] AWS provisioning: Failed to POST to admin sso route....")
-		log.Println(postData.Encode())
+		log.Println("[ERROR] AWS provisioning: Failed to GET to admin sso oidc-entry route....")
+		log.Println(adminSsoUrl)
 		return err
 	}
 
-	xsrfToken := getXsrfToken(ssoResp.Body)
-	defer ssoResp.Body.Close()
+	// ---------------
+	dashboardUrl := fmt.Sprintf("%s/admin/dashboard", o.AdminURL)
+	req6, _ := http.NewRequest("GET", dashboardUrl, nil)
+	req6.Header.Set("Content-Type", "application/json")
+	req6.Header.Set("Accept", "application/json")
+
+	dashResp, err := doRequest(client, req6)
+	if err != nil {
+		log.Println("[ERROR] AWS provisioning: Failed to GET to admin dashboard route....")
+		log.Println(dashboardUrl)
+		return err
+	}
+
+	xsrfToken := getXsrfToken(dashResp.Body)
+	defer dashResp.Body.Close()
 
 	// ---------------
 	appUpdateUrl := fmt.Sprintf("%s/admin/app/amazon_aws/instance/%s/settings/user-mgmt", o.AdminURL, appID)
@@ -145,12 +153,12 @@ func (o *OktaWebClient) configureAWSProvisioning(appID string, accessKey string,
 		updateAppData.Add("enabled", "true")
 	}
 
-	req6, _ := http.NewRequest("POST", appUpdateUrl, strings.NewReader(updateAppData.Encode()))
-	req6.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req6.Header.Set("Accept", "application/json")
+	req7, _ := http.NewRequest("POST", appUpdateUrl, strings.NewReader(updateAppData.Encode()))
+	req7.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req7.Header.Set("Accept", "application/json")
 
 	//here we are not successfully updating it
-	_, err = doRequest(client, req6)
+	_, err = doRequest(client, req7)
 	if err != nil {
 		log.Println("[ERROR] AWS provisioning: Failed to POST to app update route....")
 		log.Println(updateAppData.Encode())
@@ -162,7 +170,7 @@ func (o *OktaWebClient) configureAWSProvisioning(appID string, accessKey string,
 }
 
 func (o *OktaWebClient) RevokeAWSProvisioning(appID string) error {
-	return nil
+	return o.configureAWSProvisioning(appID, "", "")
 }
 
 func (o *OktaWebClient) SetAWSProvisioning(appID string, accessKey string, secretKey string) error {
