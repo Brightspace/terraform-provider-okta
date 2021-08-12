@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -255,7 +256,13 @@ func (okta *Okta) SetRestClient(rest *resty.Client) {
 		}
 
 		if (status < 200) || (status >= 400) {
-			return fmt.Errorf("Response not successful: Received status code %d.", status)
+			rateLimit, err := strconv.Atoi(r.Header().Get("x-rate-limit-remaining"))
+
+			if err == nil && rateLimit <= 0 {
+				return fmt.Errorf(`Response not succesful, rate limit exceeded: Recieved status code %d. Response %s`, status, r.Result())
+			}
+
+			return fmt.Errorf(`Response not successful: Received status code %d. Response: %s`, status, r.Result())
 		}
 
 		return nil
